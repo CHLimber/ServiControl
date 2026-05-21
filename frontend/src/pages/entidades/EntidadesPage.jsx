@@ -10,17 +10,29 @@ const FORM_JURIDICA = {
   email: '', cliente: false, empleado: false,
 }
 
+function formatFechaHora(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-BO')
+}
+
 export default function EntidadesPage() {
   const [entidades, setEntidades]     = useState([])
   const [cargando, setCargando]       = useState(true)
   const [error, setError]             = useState(null)
   const [busqueda, setBusqueda]       = useState('')
-  const [filtroRol, setFiltroRol]     = useState('')   // '', 'cliente', 'empleado'
+  const [filtroRol, setFiltroRol]     = useState('')
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando]       = useState(null)
   const [form, setForm]               = useState(FORM_NATURAL)
   const [guardando, setGuardando]     = useState(false)
   const [errForm, setErrForm]         = useState('')
+
+  // CU28 — Bitácora de cliente
+  const [modalBitacora, setModalBitacora] = useState(null)
+  const [notas, setNotas]             = useState([])
+  const [cargandoNotas, setCargandoNotas] = useState(false)
+  const [nuevaNota, setNuevaNota]     = useState('')
+  const [guardandoNota, setGuardandoNota] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -45,26 +57,13 @@ export default function EntidadesPage() {
   function abrirEditar(e) {
     setEditando(e)
     if (e.tipo === 'natural') {
-      setForm({
-        tipo: 'natural',
-        nombre: e.nombre || '',
-        ci: e.ci || '',
-        sexo: e.sexo || '',
-        fecha_nacimiento: e.fecha_nacimiento || '',
-        email: e.email || '',
-        cliente: e.cliente,
-        empleado: e.empleado,
-      })
+      setForm({ tipo: 'natural', nombre: e.nombre || '', ci: e.ci || '',
+                sexo: e.sexo || '', fecha_nacimiento: e.fecha_nacimiento || '',
+                email: e.email || '', cliente: e.cliente, empleado: e.empleado })
     } else {
-      setForm({
-        tipo: 'juridica',
-        razon_social: e.nombre || '',
-        nombre_comercial: e.nombre_comercial || '',
-        nit: e.nit || '',
-        email: e.email || '',
-        cliente: e.cliente,
-        empleado: e.empleado,
-      })
+      setForm({ tipo: 'juridica', razon_social: e.nombre || '',
+                nombre_comercial: e.nombre_comercial || '', nit: e.nit || '',
+                email: e.email || '', cliente: e.cliente, empleado: e.empleado })
     }
     setErrForm('')
     setModalAbierto(true)
@@ -111,6 +110,38 @@ export default function EntidadesPage() {
     }
   }
 
+  // CU28 — Abrir bitácora
+  async function abrirBitacora(entidad) {
+    setModalBitacora(entidad)
+    setNuevaNota('')
+    setNotas([])
+    setCargandoNotas(true)
+    try {
+      const resultado = await entidadesApi.listarBitacora(entidad.id)
+      setNotas(resultado)
+    } catch {
+      // sin notas o error
+    } finally {
+      setCargandoNotas(false)
+    }
+  }
+
+  async function guardarNota(e) {
+    e.preventDefault()
+    const texto = nuevaNota.trim()
+    if (!texto) return
+    setGuardandoNota(true)
+    try {
+      const nueva = await entidadesApi.crearNota(modalBitacora.id, { nota: texto })
+      setNotas(prev => [nueva, ...prev])
+      setNuevaNota('')
+    } catch {
+      alert('No se pudo guardar la nota.')
+    } finally {
+      setGuardandoNota(false)
+    }
+  }
+
   const filtradas = entidades.filter(e => {
     const txt = (e.nombre + (e.ci || '') + (e.nit || '')).toLowerCase()
     const coincideBusqueda = txt.includes(busqueda.toLowerCase())
@@ -134,19 +165,11 @@ export default function EntidadesPage() {
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <input
-            className="input"
-            style={{ flex: 1, minWidth: 200 }}
+          <input className="input" style={{ flex: 1, minWidth: 200 }}
             placeholder="Buscar por nombre, CI o NIT..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-          />
-          <select
-            className="input"
-            style={{ minWidth: 160 }}
-            value={filtroRol}
-            onChange={e => setFiltroRol(e.target.value)}
-          >
+            value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          <select className="input" style={{ minWidth: 160 }}
+            value={filtroRol} onChange={e => setFiltroRol(e.target.value)}>
             <option value="">Todos</option>
             <option value="cliente">Solo clientes</option>
             <option value="empleado">Solo empleados</option>
@@ -172,7 +195,7 @@ export default function EntidadesPage() {
                   <th>Documento</th>
                   <th>Email</th>
                   <th>Rol</th>
-                  <th style={{ width: 100 }}>Acciones</th>
+                  <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +220,10 @@ export default function EntidadesPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        {e.cliente && (
+                          <button className="btn btn-ghost btn-sm" onClick={() => abrirBitacora(e)}
+                            title="Bitácora de cliente">📝</button>
+                        )}
                         <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} title="Editar">✏️</button>
                         <button className="btn btn-ghost btn-sm" onClick={() => desactivar(e.id, e.nombre)}
                           title="Desactivar" style={{ color: 'var(--danger)' }}>🗑️</button>
@@ -213,7 +240,68 @@ export default function EntidadesPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* ── Modal Bitácora de cliente (CU28) ── */}
+      {modalBitacora && (
+        <div className="modal-overlay" onClick={() => setModalBitacora(null)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={ev => ev.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Bitácora</h2>
+                <div className="text-sm text-muted">{modalBitacora.nombre}</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalBitacora(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {/* Formulario nueva nota */}
+              <form onSubmit={guardarNota} style={{ marginBottom: 20 }}>
+                <div className="form-group">
+                  <label className="form-label">Nueva nota</label>
+                  <textarea className="input" rows={3} value={nuevaNota}
+                    onChange={e => setNuevaNota(e.target.value)}
+                    placeholder="Escribí una observación sobre este cliente..." />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn btn-primary btn-sm"
+                    disabled={guardandoNota || !nuevaNota.trim()}>
+                    {guardandoNota ? 'Guardando...' : '+ Agregar nota'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Listado de notas */}
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>
+                Historial de notas {notas.length > 0 && `(${notas.length})`}
+              </div>
+              {cargandoNotas ? (
+                <div className="text-muted text-sm">Cargando notas...</div>
+              ) : notas.length === 0 ? (
+                <div className="empty-state" style={{ padding: '24px 0' }}>
+                  <div className="icon">📝</div>
+                  <p>Sin notas registradas para este cliente.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
+                  {notas.map(n => (
+                    <div key={n.id} style={{
+                      background: 'var(--bg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '10px 14px',
+                    }}>
+                      <p className="text-sm" style={{ marginBottom: 6, whiteSpace: 'pre-wrap' }}>{n.nota}</p>
+                      <div className="text-muted text-sm">
+                        {n.usuario} · {formatFechaHora(n.fecha_creacion)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal crear / editar entidad */}
       {modalAbierto && (
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal" onClick={ev => ev.stopPropagation()}>
@@ -224,20 +312,16 @@ export default function EntidadesPage() {
 
             <form onSubmit={guardar}>
               <div className="modal-body">
-
-                {/* Selector tipo (solo al crear) */}
                 {!editando && (
                   <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
                     <button type="button"
                       className={`btn ${form.tipo === 'natural' ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ flex: 1 }}
-                      onClick={() => cambiarTipo('natural')}>
+                      style={{ flex: 1 }} onClick={() => cambiarTipo('natural')}>
                       Persona natural
                     </button>
                     <button type="button"
                       className={`btn ${form.tipo === 'juridica' ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ flex: 1 }}
-                      onClick={() => cambiarTipo('juridica')}>
+                      style={{ flex: 1 }} onClick={() => cambiarTipo('juridica')}>
                       Persona jurídica
                     </button>
                   </div>

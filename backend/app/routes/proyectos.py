@@ -45,12 +45,10 @@ def crear():
         if not data.get(campo):
             return jsonify({'error': f'El campo {campo} es requerido'}), 400
 
-    # Obtener el establecimiento del sistema seleccionado
     from ..models.entidad import Sistema
     sistema = db.get_or_404(Sistema, data['id_sistema'])
     id_establecimiento = data.get('id_establecimiento') or sistema.id_establecimiento
 
-    # Generar código automático: PROY-YYYYMM-XXXX
     prefijo = datetime.now().strftime('PROY-%Y%m-')
     ultimo = (Proyecto.query
               .filter(Proyecto.codigo.like(f'{prefijo}%'))
@@ -156,13 +154,17 @@ def _serializar(p: Proyecto, detalle: bool = False) -> dict:
         'fecha_creacion': p.fecha_creacion.isoformat() if p.fecha_creacion else None,
     }
     if detalle:
+        estados_map = {e.id: e.nombre for e in EstadoProyecto.query.all()}
         data['historial'] = [
             {
                 'id_estado_anterior': h.id_estado_anterior,
+                'estado_anterior': estados_map.get(h.id_estado_anterior),
                 'id_estado_nuevo': h.id_estado_nuevo,
+                'estado_nuevo': estados_map.get(h.id_estado_nuevo),
                 'fecha_cambio': h.fecha_cambio.isoformat() if h.fecha_cambio else None,
                 'observacion': h.observacion,
+                'id_usuario': h.id_usuario,
             }
-            for h in p.historial
+            for h in sorted(p.historial, key=lambda h: h.fecha_cambio or datetime.min)
         ]
     return data

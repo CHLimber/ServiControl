@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from decimal import Decimal
+from sqlalchemy import func
 from ..extensions import db
 from ..models.finanzas import Pago, GastoOrden
 from ..bitacora import log
@@ -44,9 +45,9 @@ def registrar_pago():
             return jsonify({'error': f'El campo {campo} es requerido'}), 400
 
     if data['tipo_pago'] not in TIPOS_PAGO:
-        return jsonify({'error': f'Tipo de pago inválido'}), 400
+        return jsonify({'error': 'Tipo de pago inválido'}), 400
     if data['metodo'] not in METODOS_PAGO:
-        return jsonify({'error': f'Método de pago inválido'}), 400
+        return jsonify({'error': 'Método de pago inválido'}), 400
 
     try:
         monto = Decimal(str(data['monto']))
@@ -117,23 +118,62 @@ def registrar_gasto():
     return jsonify(_serializar_gasto(gasto)), 201
 
 
-# ── VISTA: cuentas por cobrar ─────────────────────────────────────
+# ── CU36: Cuentas por cobrar ──────────────────────────────────────
 
 @bp.get('/cuentas-por-cobrar')
 @jwt_required()
 @requiere_permiso('ver_finanzas')
 def cuentas_por_cobrar():
-    from ..extensions import db
-    from sqlalchemy import text
-    resultado = db.session.execute(text('SELECT * FROM cuentas_por_cobrar')).fetchall()
-    return jsonify([{
-        'id_proyecto': r.id_proyecto,
-        'codigo_proyecto': r.codigo_proyecto,
-        'cliente': r.cliente,
-        'monto_total_cotizacion': float(r.monto_total_cotizacion),
-        'total_pagado': float(r.total_pagado),
-        'saldo_pendiente': float(r.saldo_pendiente),
-    } for r in resultado])
+    """CU36 — Consultar cuentas por cobrar.
+
+    Calcula el saldo pendiente por proyecto: total cotización aprobada minus pagos recibidos.
+    No depende de ninguna vista SQL; usa ORM directamente.
+    """
+    from ..models.proyecto import Proyecto
+    from ..models.cotizacion import Cotizacion, CotizacionDetalle
+    from ..models.entidad import Entidad
+
+    # Proyectos vinculados a una cotización aprobada
+    proyectos = (
+        db.session.query(Proyecto)
+        .join(Cotizacion, Proyecto.id_cotizacion == Cotizacion.id)
+        .filter(Cotizacion.estado == 'aprobada')
+        .all()
+    )
+
+    resultado = []
+    for p in proyectos:
+        cotizacion = db.session.get(Cotizacion, p.id_cotizacion)
+        if not cotizacion:
+            continue
+
+        # Monto total: suma de subtotales de detalles de cotización
+        monto_total = db.session.query(
+            func.coalesce(func.sum(CotizacionDetalle.subtotal), 0)
+        ).filter_by(id_cotizacion=cotizacion.id).scalar() or 0
+
+        # Total pagado para este proyecto
+        total_pagado = db.session.query(
+            func.coalesce(func.sum(Pago.monto), 0)
+        ).filter_by(id_proyecto=p.id).scalar() or 0
+
+        saldo = float(monto_total) - float(total_pagado)
+        if saldo <= 0:
+            continue
+
+        entidad = db.session.get(Entidad, p.id_entidad)
+        resultado.append({
+            'id_proyecto': p.id,
+            'codigo_proyecto': p.codigo,
+            'titulo_proyecto': p.titulo,
+            'cliente': entidad.nombre if entidad else '—',
+            'monto_total_cotizacion': float(monto_total),
+            'total_pagado': float(total_pagado),
+            'saldo_pendiente': saldo,
+        })
+
+    resultado.sort(key=lambda x: x['saldo_pendiente'], reverse=True)
+    return jsonify(resultado)
 
 
 def _serializar_pago(p: Pago) -> dict:

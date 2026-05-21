@@ -16,13 +16,24 @@ function formatFecha(iso) {
   return new Date(iso).toLocaleDateString('es-BO')
 }
 
+function formatFechaHora(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-BO')
+}
+
 export default function OrdenesPage() {
   const [ordenes, setOrdenes]       = useState([])
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busqueda, setBusqueda]     = useState('')
-  const [detalle, setDetalle]       = useState(null)
+
+  // Detalle (CU25 + CU27)
+  const [detalle, setDetalle]               = useState(null)
+  const [cargandoDetalle, setCargandoDetalle] = useState(false)
+  const [modoConsumo, setModoConsumo]       = useState(false)
+  const [consumos, setConsumos]             = useState([])
+  const [guardandoConsumo, setGuardandoConsumo] = useState(false)
 
   // Modal crear
   const [modalCrear, setModalCrear] = useState(false)
@@ -57,6 +68,57 @@ export default function OrdenesPage() {
     }
   }
 
+  // CU27 — abre detalle con historial completo; también carga productos para CU25
+  async function abrirDetalle(o) {
+    setDetalle({ ...o, historial: null, productos: null })
+    setModoConsumo(false)
+    setCargandoDetalle(true)
+    try {
+      const full = await ordenesApi.obtener(o.id)
+      setDetalle(full)
+      setConsumos((full.productos || []).map(p => ({
+        id_producto: p.id_producto,
+        cantidad_usada: p.cantidad_usada ?? '',
+        observacion: p.observacion ?? '',
+      })))
+    } catch {
+      // muestra lo que ya tenemos
+    } finally {
+      setCargandoDetalle(false)
+    }
+  }
+
+  async function abrirModalEstado(o) {
+    setModalEstado(o)
+    setNuevoEstado('')
+    setObsEstado('')
+    if (estados.length === 0) {
+      const ests = await ordenesApi.estados()
+      setEstados(ests)
+    }
+  }
+
+  // CU25 — guarda el consumo real de materiales
+  async function guardarConsumo() {
+    setGuardandoConsumo(true)
+    try {
+      const actualizada = await ordenesApi.reportarConsumo(detalle.id, { consumos })
+      setDetalle(actualizada)
+      setOrdenes(prev => prev.map(o => o.id === actualizada.id ? actualizada : o))
+      setModoConsumo(false)
+    } catch {
+      alert('No se pudo guardar el consumo.')
+    } finally {
+      setGuardandoConsumo(false)
+    }
+  }
+
+  function actualizarConsumo(id_producto, campo, valor) {
+    setConsumos(prev => prev.map(c =>
+      c.id_producto === id_producto ? { ...c, [campo]: valor } : c
+    ))
+  }
+
   async function abrirCrear() {
     setForm({ id_proyecto: '', id_servicio: '', id_estado_orden: '',
               descripcion: '', fecha_ejecucion: '', tiempo_estimado: '', observaciones: '',
@@ -81,9 +143,7 @@ export default function OrdenesPage() {
   function toggleEmpleado(id_empleado) {
     setForm(f => {
       const existe = f.empleados.find(e => e.id_empleado === id_empleado)
-      if (existe) {
-        return { ...f, empleados: f.empleados.filter(e => e.id_empleado !== id_empleado) }
-      }
+      if (existe) return { ...f, empleados: f.empleados.filter(e => e.id_empleado !== id_empleado) }
       return { ...f, empleados: [...f.empleados, { id_empleado, es_responsable: f.empleados.length === 0 }] }
     })
   }
@@ -139,6 +199,7 @@ export default function OrdenesPage() {
         observacion_cambio: obsEstado,
       })
       setOrdenes(prev => prev.map(o => o.id === modalEstado.id ? actualizada : o))
+      if (detalle?.id === modalEstado.id) setDetalle(actualizada)
       setModalEstado(null)
     } catch {
       alert('No se pudo cambiar el estado.')
@@ -211,9 +272,9 @@ export default function OrdenesPage() {
                     <td className="text-sm text-muted">{o.tiempo_estimado ? `${o.tiempo_estimado}h` : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(o)} title="Ver detalle">👁️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(o)} title="Ver detalle e historial">👁️</button>
                         <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => { setModalEstado(o); setNuevoEstado(''); setObsEstado('') }}>🔄</button>
+                          onClick={() => abrirModalEstado(o)}>🔄</button>
                       </div>
                     </td>
                   </tr>
@@ -227,29 +288,158 @@ export default function OrdenesPage() {
         </div>
       </div>
 
-      {/* Modal detalle */}
+      {/* ── Modal detalle: historial (CU27) + consumo (CU25) ── */}
       {detalle && (
-        <div className="modal-overlay" onClick={() => setDetalle(null)}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => { setDetalle(null); setModoConsumo(false) }}>
+          <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h2 className="modal-title">{detalle.codigo}</h2>
-                <span className={`badge ${BADGE_ESTADO[detalle.estado_nombre] || 'badge-gray'}`}>{detalle.estado_nombre}</span>
+                <span className={`badge ${BADGE_ESTADO[detalle.estado_nombre] || 'badge-gray'}`}>
+                  {detalle.estado_nombre}
+                </span>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setDetalle(null); setModoConsumo(false) }}>✕</button>
             </div>
+
             <div className="modal-body">
-              {detalle.descripcion && <p className="text-sm" style={{ marginBottom: 12 }}>{detalle.descripcion}</p>}
-              <div className="form-grid" style={{ marginBottom: 12 }}>
-                <div><div className="text-sm text-muted">Proyecto</div><div style={{ fontWeight: 500 }}>#{detalle.id_proyecto}</div></div>
-                <div><div className="text-sm text-muted">Ejecución</div><div style={{ fontWeight: 500 }}>{formatFecha(detalle.fecha_ejecucion)}</div></div>
-                <div><div className="text-sm text-muted">Horas estimadas</div><div style={{ fontWeight: 500 }}>{detalle.tiempo_estimado ? `${detalle.tiempo_estimado}h` : '—'}</div></div>
+              {/* Info básica */}
+              <div className="form-grid" style={{ marginBottom: 16 }}>
+                <div>
+                  <div className="text-sm text-muted">Proyecto</div>
+                  <div style={{ fontWeight: 500 }}>#{detalle.id_proyecto}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted">Ejecución</div>
+                  <div style={{ fontWeight: 500 }}>{formatFecha(detalle.fecha_ejecucion)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted">Horas estimadas</div>
+                  <div style={{ fontWeight: 500 }}>{detalle.tiempo_estimado ? `${detalle.tiempo_estimado}h` : '—'}</div>
+                </div>
               </div>
-              {detalle.observaciones && <p className="text-sm text-muted">{detalle.observaciones}</p>}
+              {detalle.descripcion && (
+                <p className="text-sm" style={{ marginBottom: 16 }}>{detalle.descripcion}</p>
+              )}
+
+              {/* CU25 — Materiales y consumo */}
+              {cargandoDetalle ? (
+                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Cargando materiales...</div>
+              ) : detalle.productos && detalle.productos.length > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600 }}>Materiales</div>
+                    {!modoConsumo ? (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(true)}>
+                        ✏️ Reportar consumo
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(false)}>Cancelar</button>
+                        <button className="btn btn-primary btn-sm" onClick={guardarConsumo} disabled={guardandoConsumo}>
+                          {guardandoConsumo ? 'Guardando...' : 'Guardar consumo'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="table-wrap" style={{ marginBottom: 20 }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Material</th>
+                          <th>Asignado</th>
+                          <th>{modoConsumo ? 'Usado (editar)' : 'Usado'}</th>
+                          {modoConsumo && <th>Obs.</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalle.productos.map(p => {
+                          const c = consumos.find(x => x.id_producto === p.id_producto) || {}
+                          return (
+                            <tr key={p.id_producto}>
+                              <td style={{ fontWeight: 500 }}>{p.nombre_producto}</td>
+                              <td className="text-sm">{p.cantidad_asignada}</td>
+                              <td>
+                                {modoConsumo ? (
+                                  <input type="number" className="input" style={{ width: 80, padding: '4px 8px' }}
+                                    min="0" step="0.01"
+                                    value={c.cantidad_usada ?? ''}
+                                    onChange={e => actualizarConsumo(p.id_producto, 'cantidad_usada', e.target.value)}
+                                    placeholder="0" />
+                                ) : (
+                                  <span className={p.cantidad_usada != null ? 'text-sm' : 'text-muted text-sm'}>
+                                    {p.cantidad_usada != null ? p.cantidad_usada : '—'}
+                                  </span>
+                                )}
+                              </td>
+                              {modoConsumo && (
+                                <td>
+                                  <input className="input" style={{ width: 140, padding: '4px 8px', fontSize: '0.8rem' }}
+                                    value={c.observacion ?? ''}
+                                    onChange={e => actualizarConsumo(p.id_producto, 'observacion', e.target.value)}
+                                    placeholder="Nota..." />
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* CU27 — Historial de estados */}
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>Historial de estados</div>
+              {cargandoDetalle ? (
+                <div className="text-muted text-sm">Cargando historial...</div>
+              ) : !detalle.historial || detalle.historial.length === 0 ? (
+                <div className="text-muted text-sm">Sin historial registrado.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {detalle.historial.map((h, i) => (
+                    <div key={i} style={{
+                      display: 'flex', gap: 12, paddingBottom: 12,
+                      borderLeft: '2px solid var(--accent)', paddingLeft: 14, position: 'relative',
+                    }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: 'var(--accent)', position: 'absolute', left: -6, top: 4,
+                      }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {h.estado_anterior && (
+                            <>
+                              <span className={`badge ${BADGE_ESTADO[h.estado_anterior] || 'badge-gray'}`}
+                                style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                                {h.estado_anterior}
+                              </span>
+                              <span className="text-muted" style={{ fontSize: 12 }}>→</span>
+                            </>
+                          )}
+                          <span className={`badge ${BADGE_ESTADO[h.estado_nuevo] || 'badge-gray'}`}
+                            style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                            {h.estado_nuevo}
+                          </span>
+                        </div>
+                        <div className="text-muted text-sm" style={{ marginTop: 2 }}>
+                          {formatFechaHora(h.fecha_cambio)}
+                        </div>
+                        {h.observacion && (
+                          <div className="text-sm" style={{ marginTop: 2, fontStyle: 'italic' }}>
+                            "{h.observacion}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
             <div className="modal-footer">
               <button className="btn btn-ghost"
-                onClick={() => { setModalEstado(detalle); setNuevoEstado(''); setObsEstado(''); setDetalle(null) }}>
+                onClick={() => { abrirModalEstado(detalle); setDetalle(null); setModoConsumo(false) }}>
                 Cambiar estado
               </button>
             </div>
@@ -352,10 +542,7 @@ export default function OrdenesPage() {
                   </div>
                 </div>
 
-                {/* Técnicos */}
-                <div style={{ fontWeight: 600, margin: '16px 0 8px', fontSize: '0.9rem' }}>
-                  Técnicos asignados
-                </div>
+                <div style={{ fontWeight: 600, margin: '16px 0 8px', fontSize: '0.9rem' }}>Técnicos asignados</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   {empleados.map(emp => {
                     const asignado = form.empleados.find(e => e.id_empleado === emp.id)
@@ -386,7 +573,6 @@ export default function OrdenesPage() {
                   Hacé click en ★ para marcar al responsable principal.
                 </div>
 
-                {/* Productos */}
                 <div style={{ fontWeight: 600, margin: '4px 0 8px', fontSize: '0.9rem' }}>Materiales</div>
                 {form.productos.map((prod, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>

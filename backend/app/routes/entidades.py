@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..extensions import db
 from ..models.entidad import Entidad, EntidadNatural, EntidadJuridica, Establecimiento, Sistema
 from ..models.catalogo import Telefono
+from ..models.bitacora_doc import BitacoraCliente
 from ..bitacora import log
 from ..permisos import requiere_permiso
 
@@ -55,7 +56,7 @@ def crear():
         empleado=data.get('empleado', False),
     )
     db.session.add(entidad)
-    db.session.flush()  # obtener el id antes del commit
+    db.session.flush()
 
     if tipo == 'natural':
         natural = EntidadNatural(
@@ -157,7 +158,6 @@ def listar_sistemas(id_entidad):
 @jwt_required()
 @requiere_permiso('editar_clientes')
 def crear_sistema(id_entidad):
-    """Crea un establecimiento (si hace falta) y un sistema para la entidad."""
     entidad = db.get_or_404(Entidad, id_entidad)
     data = request.get_json()
     usuario = get_jwt_identity()
@@ -167,7 +167,6 @@ def crear_sistema(id_entidad):
     if not data.get('nombre'):
         return jsonify({'error': 'El nombre del sistema es requerido'}), 400
 
-    # Reusar el primer establecimiento activo de la entidad, o crear uno nuevo
     establecimiento = (
         Establecimiento.query
         .filter_by(id_entidad=id_entidad, estado=True)
@@ -196,6 +195,60 @@ def crear_sistema(id_entidad):
     db.session.commit()
     log('CREAR_SISTEMA', f"Sistema '{sistema.nombre}' creado para entidad {id_entidad}", id_usuario=int(usuario), modulo='entidades')
     return jsonify(_serializar_sistema(sistema)), 201
+
+
+# ── CU28: Bitácora de cliente ─────────────────────────────────────
+
+@bp.get('/<int:id_entidad>/bitacora')
+@jwt_required()
+@requiere_permiso('ver_clientes')
+def listar_bitacora(id_entidad):
+    db.get_or_404(Entidad, id_entidad)
+    notas = (
+        BitacoraCliente.query
+        .filter_by(id_entidad=id_entidad)
+        .order_by(BitacoraCliente.fecha_creacion.desc())
+        .all()
+    )
+    return jsonify([_serializar_nota(n) for n in notas])
+
+
+@bp.post('/<int:id_entidad>/bitacora')
+@jwt_required()
+@requiere_permiso('ver_clientes')
+def crear_nota_bitacora(id_entidad):
+    entidad = db.get_or_404(Entidad, id_entidad)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    nota_texto = (data.get('nota') or '').strip()
+    if not nota_texto:
+        return jsonify({'error': 'La nota no puede estar vacía'}), 400
+
+    nota = BitacoraCliente(
+        id_entidad=id_entidad,
+        id_usuario=id_usuario,
+        nota=nota_texto,
+    )
+    db.session.add(nota)
+    db.session.commit()
+
+    log('NOTA_BITACORA_CLIENTE', f"Nota registrada para cliente '{entidad.nombre}'",
+        id_usuario=id_usuario, modulo='entidades')
+    return jsonify(_serializar_nota(nota)), 201
+
+
+def _serializar_nota(n: BitacoraCliente) -> dict:
+    from ..models.auth import Usuario
+    usuario = db.session.get(Usuario, n.id_usuario)
+    return {
+        'id': n.id,
+        'id_entidad': n.id_entidad,
+        'id_usuario': n.id_usuario,
+        'usuario': usuario.username if usuario else '—',
+        'nota': n.nota,
+        'fecha_creacion': n.fecha_creacion.isoformat() if n.fecha_creacion else None,
+    }
 
 
 def _serializar_sistema(s: Sistema) -> dict:

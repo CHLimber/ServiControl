@@ -17,32 +17,40 @@ function formatFecha(iso) {
   return new Date(iso).toLocaleDateString('es-BO')
 }
 
-export default function ProyectosPage() {
-  const [proyectos, setProyectos]   = useState([])
-  const [cargando, setCargando]     = useState(true)
-  const [error, setError]           = useState(null)
-  const [filtroEstado, setFiltroEstado] = useState('')
-  const [busqueda, setBusqueda]     = useState('')
-  const [detalle, setDetalle]       = useState(null)
+function formatFechaHora(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-BO')
+}
 
-  // Datos para el modal
-  const [modalCrear, setModalCrear] = useState(false)
-  const [estados, setEstados]       = useState([])
-  const [clientes, setClientes]     = useState([])
-  const [servicios, setServicios]   = useState([])
+export default function ProyectosPage() {
+  const [proyectos, setProyectos]     = useState([])
+  const [cargando, setCargando]       = useState(true)
+  const [error, setError]             = useState(null)
+  const [filtroEstado, setFiltroEstado] = useState('')
+  const [busqueda, setBusqueda]       = useState('')
+
+  // Detalle (CU21)
+  const [detalle, setDetalle]             = useState(null)
+  const [cargandoDetalle, setCargandoDetalle] = useState(false)
+
+  // Modal crear
+  const [modalCrear, setModalCrear]   = useState(false)
+  const [estados, setEstados]         = useState([])
+  const [clientes, setClientes]       = useState([])
+  const [servicios, setServicios]     = useState([])
   const [cotizaciones, setCotizaciones] = useState([])
   const [sistemasCliente, setSistemasCliente] = useState([])
-  const [form, setForm]             = useState({
+  const [form, setForm]               = useState({
     id_entidad: '', id_servicio: '', id_sistema: '', id_estado_proyecto: '',
     id_cotizacion: '', titulo: '', descripcion: '', fecha_inicio: '', fecha_fin: '',
   })
-  const [guardando, setGuardando]   = useState(false)
-  const [errForm, setErrForm]       = useState('')
+  const [guardando, setGuardando]     = useState(false)
+  const [errForm, setErrForm]         = useState('')
 
   // Modal cambio de estado
   const [modalEstado, setModalEstado] = useState(null)
   const [nuevoEstado, setNuevoEstado] = useState('')
-  const [obsEstado, setObsEstado]   = useState('')
+  const [obsEstado, setObsEstado]     = useState('')
 
   useEffect(() => { cargarProyectos() }, [])
 
@@ -54,6 +62,30 @@ export default function ProyectosPage() {
       setError('No se pudo cargar los proyectos.')
     } finally {
       setCargando(false)
+    }
+  }
+
+  // CU21 — abre el modal con historial completo
+  async function abrirDetalle(p) {
+    setDetalle({ ...p, historial: null })
+    setCargandoDetalle(true)
+    try {
+      const full = await proyectosApi.obtener(p.id)
+      setDetalle(full)
+    } catch {
+      // muestra lo que ya tenemos
+    } finally {
+      setCargandoDetalle(false)
+    }
+  }
+
+  async function abrirModalEstado(p) {
+    setModalEstado(p)
+    setNuevoEstado('')
+    setObsEstado('')
+    if (estados.length === 0) {
+      const ests = await proyectosApi.estados()
+      setEstados(ests)
     }
   }
 
@@ -193,10 +225,10 @@ export default function ProyectosPage() {
                     <td className="text-sm text-muted">{formatFecha(p.fecha_fin)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" title="Ver detalle"
-                          onClick={() => setDetalle(p)}>👁️</button>
+                        <button className="btn btn-ghost btn-sm" title="Ver historial"
+                          onClick={() => abrirDetalle(p)}>👁️</button>
                         <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => { setModalEstado(p); setNuevoEstado(''); setObsEstado('') }}>🔄</button>
+                          onClick={() => abrirModalEstado(p)}>🔄</button>
                       </div>
                     </td>
                   </tr>
@@ -210,10 +242,10 @@ export default function ProyectosPage() {
         </div>
       </div>
 
-      {/* Modal detalle */}
+      {/* ── Modal detalle + historial (CU21) ── */}
       {detalle && (
         <div className="modal-overlay" onClick={() => setDetalle(null)}>
-          <div className="modal" style={{ maxWidth: 620 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h2 className="modal-title">{detalle.titulo}</h2>
@@ -230,10 +262,12 @@ export default function ProyectosPage() {
                   <span className="badge badge-blue">Cotización #{detalle.id_cotizacion}</span>
                 )}
               </div>
+
               {detalle.descripcion && (
                 <p className="text-sm text-muted" style={{ marginBottom: 16 }}>{detalle.descripcion}</p>
               )}
-              <div className="form-grid" style={{ marginBottom: 16 }}>
+
+              <div className="form-grid" style={{ marginBottom: 20 }}>
                 <div>
                   <div className="text-sm text-muted">Fecha inicio</div>
                   <div style={{ fontWeight: 500 }}>{formatFecha(detalle.fecha_inicio)}</div>
@@ -243,26 +277,57 @@ export default function ProyectosPage() {
                   <div style={{ fontWeight: 500 }}>{formatFecha(detalle.fecha_fin)}</div>
                 </div>
               </div>
-              {detalle.historial && detalle.historial.length > 0 && (
-                <>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Historial de estados</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {detalle.historial.map((h, i) => (
-                      <div key={i} style={{ fontSize: '0.82rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border)', paddingLeft: 10 }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-                          Estado #{h.id_estado_nuevo}
-                        </span>
-                        {' — '}{formatFecha(h.fecha_cambio)}
-                        {h.observacion && <span> · {h.observacion}</span>}
+
+              {/* Historial de estados */}
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>Historial de estados</div>
+              {cargandoDetalle ? (
+                <div className="text-muted text-sm">Cargando historial...</div>
+              ) : !detalle.historial || detalle.historial.length === 0 ? (
+                <div className="text-muted text-sm">Sin historial registrado.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {detalle.historial.map((h, i) => (
+                    <div key={i} style={{
+                      display: 'flex', gap: 12, paddingBottom: 12,
+                      borderLeft: '2px solid var(--accent)', paddingLeft: 14, position: 'relative',
+                    }}>
+                      <div style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: 'var(--accent)', position: 'absolute', left: -6, top: 4, flexShrink: 0,
+                      }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          {h.estado_anterior && (
+                            <>
+                              <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_anterior] || 'badge-gray'}`}
+                                style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                                {h.estado_anterior}
+                              </span>
+                              <span className="text-muted" style={{ fontSize: 12 }}>→</span>
+                            </>
+                          )}
+                          <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_nuevo] || 'badge-gray'}`}
+                            style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                            {h.estado_nuevo}
+                          </span>
+                        </div>
+                        <div className="text-muted text-sm" style={{ marginTop: 2 }}>
+                          {formatFechaHora(h.fecha_cambio)}
+                        </div>
+                        {h.observacion && (
+                          <div className="text-sm" style={{ marginTop: 2, fontStyle: 'italic' }}>
+                            "{h.observacion}"
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost"
-                onClick={() => { setModalEstado(detalle); setNuevoEstado(''); setObsEstado(''); setDetalle(null) }}>
+                onClick={() => { abrirModalEstado(detalle); setDetalle(null) }}>
                 Cambiar estado
               </button>
             </div>
@@ -354,7 +419,7 @@ export default function ProyectosPage() {
                       onChange={e => setForm(f => ({ ...f, id_sistema: Number(e.target.value) || '' }))}
                       disabled={!form.id_entidad}>
                       <option value="">
-                        {form.id_entidad ? sistemasCliente.length === 0 ? 'Sin sistemas' : 'Seleccioná' : 'Primero el cliente'}
+                        {form.id_entidad ? (sistemasCliente.length === 0 ? 'Sin sistemas' : 'Seleccioná') : 'Primero el cliente'}
                       </option>
                       {sistemasCliente.map(s => <option key={s.id} value={s.id}>{s.nombre || `Sistema #${s.id}`}</option>)}
                     </select>

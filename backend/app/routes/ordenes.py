@@ -72,7 +72,6 @@ def crear():
     db.session.add(orden)
     db.session.flush()
 
-    # Empleados asignados
     for emp in data.get('empleados', []):
         if not emp.get('id_empleado'):
             continue
@@ -83,7 +82,6 @@ def crear():
         )
         db.session.add(oe)
 
-    # Productos asignados
     for prod in data.get('productos', []):
         if not prod.get('id_producto') or not prod.get('cantidad_asignada'):
             continue
@@ -94,7 +92,6 @@ def crear():
         )
         db.session.add(op)
 
-    # Historial inicial
     hist = OrdenHistorial(
         id_orden_trabajo=orden.id,
         id_estado_anterior=None,
@@ -153,6 +150,38 @@ def actualizar(id_orden):
     return jsonify(_serializar(o, detalle=True))
 
 
+@bp.put('/<int:id_orden>/consumo')
+@jwt_required()
+@requiere_permiso('editar_ordenes')
+def reportar_consumo(id_orden):
+    """CU25 — Reportar consumo real de materiales de una OT."""
+    o = db.get_or_404(OrdenTrabajo, id_orden)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    consumos = data.get('consumos', [])
+    for item in consumos:
+        id_producto = item.get('id_producto')
+        if not id_producto:
+            continue
+        op = OrdenProducto.query.filter_by(
+            id_orden_trabajo=id_orden,
+            id_producto=id_producto,
+        ).first()
+        if op is None:
+            continue
+        if 'cantidad_usada' in item:
+            val = item['cantidad_usada']
+            op.cantidad_usada = float(val) if val not in (None, '') else None
+        if 'observacion' in item:
+            op.observacion = (item['observacion'] or '').strip() or None
+
+    db.session.commit()
+    log('REPORTAR_CONSUMO', f"Consumo de materiales reportado en orden {o.codigo}",
+        id_usuario=id_usuario, modulo='ordenes')
+    return jsonify(_serializar(o, detalle=True))
+
+
 def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
     data = {
         'id': o.id,
@@ -168,6 +197,15 @@ def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
         'fecha_creacion': o.fecha_creacion.isoformat() if o.fecha_creacion else None,
     }
     if detalle:
+        estados_map = {e.id: e.nombre for e in EstadoOrden.query.all()}
+
+        from ..models.producto import Producto
+        prod_ids = [p.id_producto for p in o.productos]
+        prods_map = {}
+        if prod_ids:
+            for prod in Producto.query.filter(Producto.id.in_(prod_ids)).all():
+                prods_map[prod.id] = prod.nombre
+
         data['empleados'] = [
             {'id_empleado': e.id_empleado, 'es_responsable': e.es_responsable}
             for e in o.empleados
@@ -175,18 +213,22 @@ def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
         data['productos'] = [
             {
                 'id_producto': p.id_producto,
+                'nombre_producto': prods_map.get(p.id_producto, f'Producto #{p.id_producto}'),
                 'cantidad_asignada': float(p.cantidad_asignada),
-                'cantidad_usada': float(p.cantidad_usada) if p.cantidad_usada else None,
+                'cantidad_usada': float(p.cantidad_usada) if p.cantidad_usada is not None else None,
+                'observacion': p.observacion,
             }
             for p in o.productos
         ]
         data['historial'] = [
             {
                 'id_estado_anterior': h.id_estado_anterior,
+                'estado_anterior': estados_map.get(h.id_estado_anterior),
                 'id_estado_nuevo': h.id_estado_nuevo,
+                'estado_nuevo': estados_map.get(h.id_estado_nuevo),
                 'fecha_cambio': h.fecha_cambio.isoformat() if h.fecha_cambio else None,
                 'observacion': h.observacion,
             }
-            for h in o.historial
+            for h in sorted(o.historial, key=lambda h: h.fecha_cambio or datetime.min)
         ]
     return data

@@ -258,11 +258,16 @@ export default function FinanzasPage() {
         </div>
       )}
 
-      {/* Tab: Cuentas por cobrar */}
+      {/* Tab: Cuentas por cobrar (CU36) */}
       {tab === 'cuentas' && (
         <div className="card">
           {cargando ? <div className="empty-state">Cargando...</div> :
-           cuentas.length === 0 ? <div className="empty-state">No hay saldos pendientes.</div> : (
+           cuentas.length === 0 ? (
+            <div className="empty-state">
+              <div className="icon">✅</div>
+              <p>Sin saldos pendientes por cobrar.</p>
+            </div>
+          ) : (
             <div className="table-wrap">
               <table>
                 <thead>
@@ -272,20 +277,52 @@ export default function FinanzasPage() {
                     <th>Monto cotizado</th>
                     <th>Total pagado</th>
                     <th>Saldo pendiente</th>
+                    <th>% Pagado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cuentas.map(c => (
-                    <tr key={c.id_proyecto}>
-                      <td><code style={{ fontSize: 12 }}>{c.codigo_proyecto}</code></td>
-                      <td style={{ fontWeight: 500 }}>{c.cliente}</td>
-                      <td className="text-sm">{formatBs(c.monto_total_cotizacion)}</td>
-                      <td className="text-sm" style={{ color: 'var(--success)' }}>{formatBs(c.total_pagado)}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--danger)' }}>{formatBs(c.saldo_pendiente)}</td>
-                    </tr>
-                  ))}
+                  {cuentas.map(c => {
+                    const pct = c.monto_total_cotizacion > 0
+                      ? Math.round((c.total_pagado / c.monto_total_cotizacion) * 100)
+                      : 0
+                    return (
+                      <tr key={c.id_proyecto}>
+                        <td>
+                          <code style={{ fontSize: 12 }}>{c.codigo_proyecto}</code>
+                          {c.titulo_proyecto && (
+                            <div className="text-muted text-sm">{c.titulo_proyecto}</div>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 500 }}>{c.cliente}</td>
+                        <td className="text-sm">{formatBs(c.monto_total_cotizacion)}</td>
+                        <td className="text-sm" style={{ color: 'var(--success)' }}>{formatBs(c.total_pagado)}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--danger)' }}>{formatBs(c.saldo_pendiente)}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{
+                              flex: 1, height: 6, background: 'var(--border)',
+                              borderRadius: 3, minWidth: 60, overflow: 'hidden',
+                            }}>
+                              <div style={{
+                                height: '100%', width: `${pct}%`,
+                                background: pct >= 100 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)',
+                                borderRadius: 3, transition: 'width 0.3s',
+                              }} />
+                            </div>
+                            <span className="text-sm text-muted">{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
+            </div>
+          )}
+          {cuentas.length > 0 && (
+            <div className="text-muted text-sm" style={{ padding: '10px 0 0' }}>
+              {cuentas.length} proyecto{cuentas.length !== 1 ? 's' : ''} con saldo pendiente ·
+              Total: <strong style={{ color: 'var(--danger)' }}>{formatBs(totalPendiente)}</strong>
             </div>
           )}
         </div>
