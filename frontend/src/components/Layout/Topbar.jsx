@@ -11,18 +11,25 @@ const TITULOS = {
   '/finanzas':      ['Finanzas',           'Pagos y gastos operativos'],
   '/catalogos':     ['Catálogos',          'Datos maestros del sistema'],
   '/usuarios':      ['Usuarios',           'Gestión de accesos y roles'],
+  '/roles':         ['Roles y Permisos',   'Gestión de roles y permisos'],
+  '/auditoria':     ['Auditoría',          'Registro de actividad del sistema'],
+  '/productos':     ['Productos',          'Catálogo de productos y servicios'],
 }
 
-export default function Topbar() {
+export default function Topbar({ onToggleSidebar }) {
   const { tema, toggleTema } = useTheme()
   const { pathname } = useLocation()
   const [titulo, subtitulo] = TITULOS[pathname] || ['ServiControl', '']
 
   return (
     <header className="topbar">
+      <button className="hamburger" onClick={onToggleSidebar} aria-label="Abrir menú">
+        ☰
+      </button>
+
       <div className="topbar-title">
         {titulo}
-        {subtitulo && <span>— {subtitulo}</span>}
+        {subtitulo && <span className="topbar-subtitle">— {subtitulo}</span>}
       </div>
 
       <button className="theme-toggle" onClick={toggleTema} title="Cambiar tema">

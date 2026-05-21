@@ -31,13 +31,17 @@ const MODULOS = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }) {
   const { usuario, logout } = useAuth()
   const navigate = useNavigate()
 
   function handleLogout() {
     logout()
     navigate('/login')
+  }
+
+  function handleNavClick() {
+    if (window.innerWidth <= 768) onClose()
   }
 
   const iniciales = usuario?.username
@@ -63,6 +67,7 @@ export default function Sidebar() {
                 className={({ isActive }) =>
                   `nav-item ${isActive ? 'active' : ''}`
                 }
+                onClick={handleNavClick}
               >
                 <span className="nav-icon">{item.icon}</span>
                 {item.label}
