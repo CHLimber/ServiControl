@@ -2,8 +2,8 @@ import pytest
 from werkzeug.security import generate_password_hash
 from app import create_app
 from app.extensions import db as _db
-from app.models.auth import Rol, Permiso, RolPermiso, Usuario
-from app.models.entidad import Entidad, Empleado
+from app.models.seguridad.auth import Rol, Permiso, RolPermiso, Usuario
+from app.models.entidades.entidad import Entidad, Empleado
 
 
 @pytest.fixture()

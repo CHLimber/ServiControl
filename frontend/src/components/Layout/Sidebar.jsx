@@ -21,12 +21,13 @@ const MODULOS = [
   {
     label: 'Administración',
     items: [
-      { to: '/finanzas',      icon: '💰', label: 'Finanzas' },
-      { to: '/productos',     icon: '📦', label: 'Productos' },
-      { to: '/catalogos',     icon: '📂', label: 'Catálogos' },
-      { to: '/usuarios',      icon: '🔑', label: 'Usuarios' },
-      { to: '/roles',         icon: '🛡️', label: 'Roles y Permisos' },
-      { to: '/auditoria',     icon: '📋', label: 'Auditoría' },
+      { to: '/finanzas',       icon: '💰', label: 'Finanzas' },
+      { to: '/catalogo',       icon: '📦', label: 'Catálogo' },
+      { to: '/bitacoras',      icon: '📝', label: 'Bitácoras' },
+      { to: '/notificaciones', icon: '🔔', label: 'Notificaciones' },
+      { to: '/usuarios',       icon: '🔑', label: 'Usuarios' },
+      { to: '/roles',          icon: '🛡️', label: 'Roles y Permisos' },
+      { to: '/auditoria',      icon: '📋', label: 'Auditoría' },
     ],
   },
 ]

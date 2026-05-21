@@ -31,7 +31,7 @@ class TestLogin:
 
     def test_login_usuario_inactivo(self, client, app):
         from app.extensions import db
-        from app.models.auth import Usuario
+        from app.models.seguridad.auth import Usuario
 
         with app.app_context():
             u = crear_usuario('inactivo', [])

@@ -19,32 +19,32 @@ def create_app(env: str = None):
     mail.init_app(app)
 
     # Blueprints
-    from .routes.auth import bp as auth_bp
-    from .routes.entidades import bp as entidades_bp
-    from .routes.cotizaciones import bp as cotizaciones_bp
-    from .routes.proyectos import bp as proyectos_bp
-    from .routes.ordenes import bp as ordenes_bp
-    from .routes.mantenimiento import bp as mantenimiento_bp
-    from .routes.finanzas import bp as finanzas_bp
-    from .routes.notificaciones import bp as notificaciones_bp
-    from .routes.catalogos import bp as catalogos_bp
-    from .routes.productos import bp as productos_bp
-    from .routes.usuarios import bp as usuarios_bp
-    from .routes.auditoria import bp as auditoria_bp
-    from .routes.roles import bp as roles_bp
+    from .routes.seguridad.auth       import bp as auth_bp
+    from .routes.seguridad.usuarios   import bp as usuarios_bp
+    from .routes.seguridad.roles      import bp as roles_bp
+    from .routes.entidades.entidades  import bp as entidades_bp
+    from .routes.catalogo.catalogos   import bp as catalogos_bp
+    from .routes.catalogo.productos   import bp as productos_bp
+    from .routes.cotizaciones.cotizaciones import bp as cotizaciones_bp
+    from .routes.proyectos.proyectos  import bp as proyectos_bp
+    from .routes.ordenes.ordenes      import bp as ordenes_bp
+    from .routes.mantenimiento.mantenimiento import bp as mantenimiento_bp
+    from .routes.finanzas.finanzas    import bp as finanzas_bp
+    from .routes.notificaciones.notificaciones import bp as notificaciones_bp
+    from .routes.auditoria.auditoria  import bp as auditoria_bp
 
     app.register_blueprint(auth_bp,          url_prefix='/api/auth')
+    app.register_blueprint(usuarios_bp,      url_prefix='/api/usuarios')
+    app.register_blueprint(roles_bp,         url_prefix='/api/roles')
     app.register_blueprint(entidades_bp,     url_prefix='/api/entidades')
+    app.register_blueprint(catalogos_bp,     url_prefix='/api/catalogos')
+    app.register_blueprint(productos_bp,     url_prefix='/api/productos')
     app.register_blueprint(cotizaciones_bp,  url_prefix='/api/cotizaciones')
     app.register_blueprint(proyectos_bp,     url_prefix='/api/proyectos')
     app.register_blueprint(ordenes_bp,       url_prefix='/api/ordenes')
     app.register_blueprint(mantenimiento_bp, url_prefix='/api/mantenimiento')
     app.register_blueprint(finanzas_bp,      url_prefix='/api/finanzas')
     app.register_blueprint(notificaciones_bp,url_prefix='/api/notificaciones')
-    app.register_blueprint(catalogos_bp,     url_prefix='/api/catalogos')
-    app.register_blueprint(productos_bp,     url_prefix='/api/productos')
-    app.register_blueprint(usuarios_bp,      url_prefix='/api/usuarios')
     app.register_blueprint(auditoria_bp,     url_prefix='/api/auditoria')
-    app.register_blueprint(roles_bp,         url_prefix='/api/roles')
 
     return app

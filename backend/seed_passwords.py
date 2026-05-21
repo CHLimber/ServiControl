@@ -63,7 +63,7 @@ with app.app_context():
 
     # ── 2. Actualizar contraseñas ─────────────────────────────────────────────
     print('\nActualizando contraseñas...')
-    from app.models.auth import Usuario
+    from app.models.seguridad.auth import Usuario
     actualizados = 0
     for username, password in PASSWORDS.items():
         usuario = Usuario.query.filter_by(username=username).first()

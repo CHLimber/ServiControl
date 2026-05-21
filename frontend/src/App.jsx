@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
 import LoginPage from './pages/auth/LoginPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
-import ProductosPage from './pages/productos/ProductosPage'
+import CatalogoPage from './pages/catalogo/CatalogoPage'
 import EntidadesPage from './pages/entidades/EntidadesPage'
 import CotizacionesPage from './pages/cotizaciones/CotizacionesPage'
 import ProyectosPage from './pages/proyectos/ProyectosPage'
@@ -13,6 +13,8 @@ import FinanzasPage from './pages/finanzas/FinanzasPage'
 import UsuariosPage from './pages/usuarios/UsuariosPage'
 import AuditoriaPage from './pages/auditoria/AuditoriaPage'
 import RolesPage from './pages/roles/RolesPage'
+import BitacorasPage from './pages/bitacoras/BitacorasPage'
+import NotificacionesPage from './pages/notificaciones/NotificacionesPage'
 import ModuloPlaceholder from './pages/ModuloPlaceholder'
 
 function RutaProtegida({ children }) {
@@ -31,6 +33,9 @@ export default function App() {
       <Route path="/entidades" element={
         <RutaProtegida><EntidadesPage /></RutaProtegida>
       } />
+      <Route path="/catalogo" element={
+        <RutaProtegida><CatalogoPage /></RutaProtegida>
+      } />
       <Route path="/cotizaciones" element={
         <RutaProtegida><CotizacionesPage /></RutaProtegida>
       } />
@@ -46,13 +51,11 @@ export default function App() {
       <Route path="/finanzas" element={
         <RutaProtegida><FinanzasPage /></RutaProtegida>
       } />
-      <Route path="/productos" element={
-        <RutaProtegida><ProductosPage /></RutaProtegida>
+      <Route path="/bitacoras" element={
+        <RutaProtegida><BitacorasPage /></RutaProtegida>
       } />
-      <Route path="/catalogos" element={
-        <RutaProtegida>
-          <ModuloPlaceholder nombre="Catálogos" descripcion="Datos maestros del sistema" icon="📂" />
-        </RutaProtegida>
+      <Route path="/notificaciones" element={
+        <RutaProtegida><NotificacionesPage /></RutaProtegida>
       } />
       <Route path="/usuarios" element={
         <RutaProtegida><UsuariosPage /></RutaProtegida>

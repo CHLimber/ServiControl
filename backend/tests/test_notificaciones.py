@@ -1,5 +1,5 @@
 from app.extensions import db
-from app.models.notificacion import Notificacion
+from app.models.notificaciones.notificacion import Notificacion
 from tests.conftest import crear_usuario, login, auth_headers
 
 

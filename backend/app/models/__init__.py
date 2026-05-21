@@ -1,13 +1,13 @@
-from .catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Cargo, Especialidad, Telefono
-from .proveedor import Proveedor
-from .producto import Producto
-from .entidad import Entidad, EntidadNatural, EntidadJuridica, Empleado, Establecimiento, Sistema
-from .auth import Rol, Permiso, RolPermiso, Usuario
-from .cotizacion import Cotizacion, CotizacionDetalle
-from .proyecto import EstadoProyecto, Proyecto, ProyectoHistorial
-from .orden import EstadoOrden, OrdenTrabajo, OrdenEmpleado, OrdenProducto, OrdenHistorial
-from .mantenimiento import Mantenimiento, AlertaMantenimiento
-from .bitacora_doc import BitacoraCliente, BitacoraProyecto, Documento
-from .finanzas import Pago, GastoOrden
-from .notificacion import Notificacion
-from .auditoria import Bitacora, BitacoraDetalle
+from .seguridad.auth import Rol, Permiso, RolPermiso, Usuario
+from .catalogo.catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Cargo, Especialidad, Telefono
+from .catalogo.proveedor import Proveedor
+from .catalogo.producto import Producto
+from .entidades.entidad import Entidad, EntidadNatural, EntidadJuridica, Empleado, Establecimiento, Sistema
+from .cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
+from .proyectos.proyecto import EstadoProyecto, Proyecto, ProyectoHistorial
+from .ordenes.orden import EstadoOrden, OrdenTrabajo, OrdenEmpleado, OrdenProducto, OrdenHistorial
+from .mantenimiento.mantenimiento import Mantenimiento, AlertaMantenimiento
+from .bitacoras.bitacora_doc import BitacoraCliente, BitacoraProyecto, Documento
+from .finanzas.finanzas import Pago, GastoOrden
+from .notificaciones.notificacion import Notificacion
+from .auditoria.auditoria import Bitacora, BitacoraDetalle
