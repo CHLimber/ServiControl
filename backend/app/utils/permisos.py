@@ -1,8 +1,8 @@
 from functools import wraps
 from flask import jsonify
 from flask_jwt_extended import get_jwt_identity
-from .extensions import db
-from .models.auth import Usuario, RolPermiso, Permiso
+from ..extensions import db
+from ..models.seguridad.auth import Usuario, RolPermiso, Permiso
 
 
 def requiere_permiso(nombre):

@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
-from ..models.catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Especialidad
-from ..models.proveedor import Proveedor
-from ..models.entidad import Empleado, Entidad
+from ...models.catalogo.catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Especialidad
+from ...models.catalogo.proveedor import Proveedor
+from ...models.entidades.entidad import Empleado, Entidad
 
 bp = Blueprint('catalogos', __name__)
 
@@ -72,7 +72,7 @@ def proveedores():
 @bp.get('/sistemas')
 @jwt_required()
 def sistemas():
-    from ..models.entidad import Sistema, Establecimiento, Entidad
+    from ...models.entidades.entidad import Sistema, Establecimiento, Entidad
     sis = (Sistema.query
            .join(Establecimiento, Sistema.id_establecimiento == Establecimiento.id)
            .join(Entidad, Establecimiento.id_entidad == Entidad.id)

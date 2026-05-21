@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { entidadesApi } from '../../api/entidades'
+import { NotebookPen, Pencil, Trash2, X } from 'lucide-react'
 
 const FORM_NATURAL = {
   tipo: 'natural', nombre: '', ci: '', sexo: '', fecha_nacimiento: '',
@@ -222,11 +223,11 @@ export default function EntidadesPage() {
                       <div style={{ display: 'flex', gap: 6 }}>
                         {e.cliente && (
                           <button className="btn btn-ghost btn-sm" onClick={() => abrirBitacora(e)}
-                            title="Bitácora de cliente">📝</button>
+                            title="Bitácora de cliente"><NotebookPen size={14} /></button>
                         )}
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} title="Editar">✏️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(e)} title="Editar"><Pencil size={14} /></button>
                         <button className="btn btn-ghost btn-sm" onClick={() => desactivar(e.id, e.nombre)}
-                          title="Desactivar" style={{ color: 'var(--danger)' }}>🗑️</button>
+                          title="Desactivar" style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -249,7 +250,7 @@ export default function EntidadesPage() {
                 <h2 className="modal-title">Bitácora</h2>
                 <div className="text-sm text-muted">{modalBitacora.nombre}</div>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalBitacora(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalBitacora(null)}><X size={14} /></button>
             </div>
             <div className="modal-body">
               {/* Formulario nueva nota */}
@@ -276,7 +277,7 @@ export default function EntidadesPage() {
                 <div className="text-muted text-sm">Cargando notas...</div>
               ) : notas.length === 0 ? (
                 <div className="empty-state" style={{ padding: '24px 0' }}>
-                  <div className="icon">📝</div>
+                  <div className="icon"><NotebookPen size={32} /></div>
                   <p>Sin notas registradas para este cliente.</p>
                 </div>
               ) : (
@@ -307,7 +308,7 @@ export default function EntidadesPage() {
           <div className="modal" onClick={ev => ev.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editando ? 'Editar entidad' : 'Nueva entidad'}</h2>
-              <button className="btn btn-ghost btn-sm" onClick={cerrarModal}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={cerrarModal}><X size={14} /></button>
             </div>
 
             <form onSubmit={guardar}>

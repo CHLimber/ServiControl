@@ -2,10 +2,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from decimal import Decimal
 from sqlalchemy import func
-from ..extensions import db
-from ..models.finanzas import Pago, GastoOrden
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.finanzas.finanzas import Pago, GastoOrden
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('finanzas', __name__)
 
@@ -129,9 +129,9 @@ def cuentas_por_cobrar():
     Calcula el saldo pendiente por proyecto: total cotización aprobada minus pagos recibidos.
     No depende de ninguna vista SQL; usa ORM directamente.
     """
-    from ..models.proyecto import Proyecto
-    from ..models.cotizacion import Cotizacion, CotizacionDetalle
-    from ..models.entidad import Entidad
+    from ...models.proyectos.proyecto import Proyecto
+    from ...models.cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
+    from ...models.entidades.entidad import Entidad
 
     # Proyectos vinculados a una cotización aprobada
     proyectos = (

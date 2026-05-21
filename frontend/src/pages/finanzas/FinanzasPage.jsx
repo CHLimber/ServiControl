@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { proyectosApi } from '../../api/proyectos'
 import { ordenesApi } from '../../api/ordenes'
 import client from '../../api/client'
+import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X } from 'lucide-react'
 
 const finanzasApi = {
   listarPagos:       ()           => client.get('/finanzas/pagos'),
@@ -147,28 +148,28 @@ export default function FinanzasPage() {
       {/* Resumen */}
       <div className="stats-grid" style={{ marginBottom: 20 }}>
         <div className="stat-card">
-          <div className="stat-icon green">💰</div>
+          <div className="stat-icon green"><TrendingUp size={20} /></div>
           <div className="stat-info">
             <div className="stat-value">{formatBs(totalPagos)}</div>
             <div className="stat-label">Total cobrado</div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon red">📤</div>
+          <div className="stat-icon red"><TrendingDown size={20} /></div>
           <div className="stat-info">
             <div className="stat-value">{formatBs(totalGastos)}</div>
             <div className="stat-label">Total gastos</div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon yellow">⏳</div>
+          <div className="stat-icon yellow"><Clock size={20} /></div>
           <div className="stat-info">
             <div className="stat-value">{formatBs(totalPendiente)}</div>
             <div className="stat-label">Por cobrar</div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon blue">📋</div>
+          <div className="stat-icon blue"><BarChart3 size={20} /></div>
           <div className="stat-info">
             <div className="stat-value">{cuentas.length}</div>
             <div className="stat-label">Proyectos con saldo</div>
@@ -264,7 +265,7 @@ export default function FinanzasPage() {
           {cargando ? <div className="empty-state">Cargando...</div> :
            cuentas.length === 0 ? (
             <div className="empty-state">
-              <div className="icon">✅</div>
+              <div className="icon"><CheckCircle size={32} /></div>
               <p>Sin saldos pendientes por cobrar.</p>
             </div>
           ) : (
@@ -334,7 +335,7 @@ export default function FinanzasPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Registrar pago</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalPago(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPago(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardarPago}>
               <div className="modal-body">
@@ -404,7 +405,7 @@ export default function FinanzasPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Registrar gasto</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalGasto(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalGasto(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardarGasto}>
               <div className="modal-body">

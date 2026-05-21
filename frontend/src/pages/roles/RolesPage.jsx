@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import client from '../../api/client'
+import { AlertTriangle, X } from 'lucide-react'
 
 const rolesApi = {
   listar:            ()              => client.get('/roles/'),
@@ -225,10 +226,10 @@ export default function RolesPage() {
         <div className="modal-overlay" onClick={() => setModalAdvert(false)}>
           <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title" style={{ color: 'var(--warning, #d97706)' }}>
-                ⚠ Advertencia
+              <h2 className="modal-title" style={{ color: 'var(--warning, #d97706)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={18} /> Advertencia
               </h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalAdvert(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalAdvert(false)}><X size={14} /></button>
             </div>
             <div className="modal-body">
               <p>Estás a punto de <strong>quitar todos los permisos</strong> al rol <strong>Administrador</strong>.</p>

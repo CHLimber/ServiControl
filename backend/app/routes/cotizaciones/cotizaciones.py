@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from decimal import Decimal
-from ..extensions import db
-from ..models.cotizacion import Cotizacion, CotizacionDetalle
-from ..models.auth import Usuario
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
+from ...models.seguridad.auth import Usuario
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('cotizaciones', __name__)
 

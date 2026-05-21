@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models.notificacion import Notificacion
+from ...extensions import db
+from ...models.notificaciones.notificacion import Notificacion
 
 bp = Blueprint('notificaciones', __name__)
 

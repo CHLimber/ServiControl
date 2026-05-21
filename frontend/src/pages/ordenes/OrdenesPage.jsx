@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ordenesApi } from '../../api/ordenes'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
+import { Eye, RefreshCw, Pencil, Star, X } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Pendiente':   'badge-gray',
@@ -272,9 +273,9 @@ export default function OrdenesPage() {
                     <td className="text-sm text-muted">{o.tiempo_estimado ? `${o.tiempo_estimado}h` : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(o)} title="Ver detalle e historial">👁️</button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(o)} title="Ver detalle e historial"><Eye size={14} /></button>
                         <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => abrirModalEstado(o)}>🔄</button>
+                          onClick={() => abrirModalEstado(o)}><RefreshCw size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -299,7 +300,7 @@ export default function OrdenesPage() {
                   {detalle.estado_nombre}
                 </span>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setDetalle(null); setModoConsumo(false) }}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setDetalle(null); setModoConsumo(false) }}><X size={14} /></button>
             </div>
 
             <div className="modal-body">
@@ -331,7 +332,7 @@ export default function OrdenesPage() {
                     <div style={{ fontWeight: 600 }}>Materiales</div>
                     {!modoConsumo ? (
                       <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(true)}>
-                        ✏️ Reportar consumo
+                        <Pencil size={13} /> Reportar consumo
                       </button>
                     ) : (
                       <div style={{ display: 'flex', gap: 6 }}>
@@ -453,7 +454,7 @@ export default function OrdenesPage() {
           <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Cambiar estado — {modalEstado.codigo}</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}><X size={14} /></button>
             </div>
             <form onSubmit={cambiarEstado}>
               <div className="modal-body">
@@ -490,7 +491,7 @@ export default function OrdenesPage() {
           <div className="modal" style={{ maxWidth: 680 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Nueva orden de trabajo</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardar}>
               <div className="modal-body">
@@ -557,20 +558,20 @@ export default function OrdenesPage() {
                           <input type="checkbox" checked={!!asignado}
                             onChange={() => toggleEmpleado(emp.id)} style={{ display: 'none' }} />
                           {emp.nombre}
-                          {esResp && <span style={{ color: 'var(--accent)', fontWeight: 700 }}> ★</span>}
+                          {esResp && <span style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', marginLeft: 2 }}><Star size={11} fill="currentColor" /></span>}
                         </label>
                         {asignado && !esResp && (
                           <button type="button" className="btn btn-ghost btn-sm"
                             title="Marcar como responsable"
                             onClick={() => toggleResponsable(emp.id)}
-                            style={{ fontSize: '0.75rem', padding: '2px 6px' }}>★</button>
+                            style={{ padding: '2px 6px' }}><Star size={12} /></button>
                         )}
                       </div>
                     )
                   })}
                 </div>
                 <div className="text-muted text-sm" style={{ marginBottom: 16 }}>
-                  Hacé click en ★ para marcar al responsable principal.
+                  Hacé click en <Star size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> para marcar al responsable principal.
                 </div>
 
                 <div style={{ fontWeight: 600, margin: '4px 0 8px', fontSize: '0.9rem' }}>Materiales</div>
@@ -586,7 +587,7 @@ export default function OrdenesPage() {
                       onChange={e => actualizarProducto(idx, 'cantidad_asignada', e.target.value)}
                       placeholder="Cant." />
                     <button type="button" className="btn btn-ghost btn-sm"
-                      style={{ color: 'var(--danger)' }} onClick={() => quitarProducto(idx)}>✕</button>
+                      style={{ color: 'var(--danger)' }} onClick={() => quitarProducto(idx)}><X size={14} /></button>
                   </div>
                 ))}
                 <button type="button" className="btn btn-ghost btn-sm" onClick={agregarProducto}>

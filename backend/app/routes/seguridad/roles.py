@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models.auth import Rol, Permiso, RolPermiso
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.seguridad.auth import Rol, Permiso, RolPermiso
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('roles', __name__)
 

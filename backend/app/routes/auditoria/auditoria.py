@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from ..extensions import db
-from ..models.auditoria import Bitacora, BitacoraDetalle
-from ..models.auth import Usuario
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.auditoria.auditoria import Bitacora, BitacoraDetalle
+from ...models.seguridad.auth import Usuario
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('auditoria', __name__)
 

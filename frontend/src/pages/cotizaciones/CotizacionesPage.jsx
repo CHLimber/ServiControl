@@ -3,6 +3,7 @@ import { cotizacionesApi } from '../../api/cotizaciones'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { productosApi } from '../../api/productos'
+import { Eye, X } from 'lucide-react'
 
 const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada', 'vencida']
 
@@ -251,7 +252,7 @@ export default function CotizacionesPage() {
                       {c.fecha_creacion ? new Date(c.fecha_creacion).toLocaleDateString('es-BO') : '—'}
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(c.id)}>👁️</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(c.id)}><Eye size={14} /></button>
                     </td>
                   </tr>
                 ))}
@@ -272,7 +273,7 @@ export default function CotizacionesPage() {
               <h2 className="modal-title">
                 {detalle.cargando ? 'Cargando...' : detalle.codigo}
               </h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}><X size={14} /></button>
             </div>
             {!detalle.cargando && (
               <>
@@ -346,7 +347,7 @@ export default function CotizacionesPage() {
           <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Nuevo sistema</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalSistema(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalSistema(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardarSistema}>
               <div className="modal-body">
@@ -404,7 +405,7 @@ export default function CotizacionesPage() {
           <div className="modal" style={{ maxWidth: 720 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Nueva cotización</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardar}>
               <div className="modal-body">
@@ -509,7 +510,7 @@ export default function CotizacionesPage() {
                             {form.detalles.length > 1 && (
                               <button type="button" className="btn btn-ghost btn-sm"
                                 style={{ color: 'var(--danger)' }}
-                                onClick={() => eliminarFila(idx)}>✕</button>
+                                onClick={() => eliminarFila(idx)}><X size={14} /></button>
                             )}
                           </td>
                         </tr>

@@ -4,11 +4,11 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity,
 )
 from datetime import datetime, timedelta
-from werkzeug.security import check_password_hash
-from ..extensions import db
-from ..models.auth import Usuario
-from ..bitacora import log
-from .. import correo
+from werkzeug.security import check_password_hash, generate_password_hash
+from ...extensions import db
+from ...models.seguridad.auth import Usuario
+from ...utils.bitacora import log
+from ...utils import correo
 
 bp = Blueprint('auth', __name__)
 
@@ -118,3 +118,57 @@ def me():
         'username': usuario.username,
         'rol': usuario.rol.nombre,
     })
+
+
+@bp.get('/perfil')
+@jwt_required()
+def get_perfil():
+    id_usuario = int(get_jwt_identity())
+    usuario = db.get_or_404(Usuario, id_usuario)
+    nombre = ''
+    if usuario.empleado and usuario.empleado.entidad:
+        nombre = usuario.empleado.entidad.nombre
+    return jsonify({
+        'id': usuario.id,
+        'username': usuario.username,
+        'email': usuario.email or '',
+        'nombre': nombre,
+        'rol': usuario.rol.nombre,
+        'ultimo_acceso': usuario.ultimo_acceso.isoformat() if usuario.ultimo_acceso else None,
+        'fecha_creacion': usuario.fecha_creacion.isoformat() if usuario.fecha_creacion else None,
+    })
+
+
+@bp.put('/perfil')
+@jwt_required()
+def update_perfil():
+    id_usuario = int(get_jwt_identity())
+    usuario = db.get_or_404(Usuario, id_usuario)
+    data = request.get_json()
+
+    cambios = []
+    if 'email' in data and data['email'] != usuario.email:
+        nuevo_email = data['email'].strip()
+        usuario.email = nuevo_email
+        if usuario.empleado and usuario.empleado.entidad:
+            usuario.empleado.entidad.email = nuevo_email
+        cambios.append('email')
+
+    if data.get('password'):
+        if len(data['password']) < 8:
+            return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 422
+        usuario.password = generate_password_hash(data['password'])
+        cambios.append('password')
+
+    if not cambios:
+        return jsonify({'mensaje': 'Sin cambios'}), 200
+
+    db.session.commit()
+    log('ACTUALIZAR_PERFIL',
+        f"Usuario '{usuario.username}' actualizó su perfil ({', '.join(cambios)})",
+        usuario=usuario.username, id_usuario=usuario.id, modulo='auth')
+
+    if 'password' in cambios:
+        correo.notificar_cambio_password(usuario.email, usuario.username)
+
+    return jsonify({'mensaje': 'Perfil actualizado correctamente'})

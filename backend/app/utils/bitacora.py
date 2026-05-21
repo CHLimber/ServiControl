@@ -13,8 +13,8 @@ def log(accion: str, descripcion: str, usuario: str = None,
 
     try:
         from flask import has_request_context, request as flask_request
-        from .extensions import db
-        from .models.auditoria import Bitacora, BitacoraDetalle
+        from ..extensions import db
+        from ..models.auditoria.auditoria import Bitacora, BitacoraDetalle
 
         ip = flask_request.remote_addr if has_request_context() else None
 

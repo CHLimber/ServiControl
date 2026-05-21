@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
-from ..extensions import db
-from ..models.orden import OrdenTrabajo, OrdenEmpleado, OrdenProducto, OrdenHistorial, EstadoOrden
-from ..models.entidad import Empleado
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.ordenes.orden import OrdenTrabajo, OrdenEmpleado, OrdenProducto, OrdenHistorial, EstadoOrden
+from ...models.entidades.entidad import Empleado
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('ordenes', __name__)
 
@@ -199,7 +199,7 @@ def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
     if detalle:
         estados_map = {e.id: e.nombre for e in EstadoOrden.query.all()}
 
-        from ..models.producto import Producto
+        from ...models.catalogo.producto import Producto
         prod_ids = [p.id_producto for p in o.productos]
         prods_map = {}
         if prod_ids:

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { catalogosApi } from '../../api/catalogos'
+import { RefreshCw, X } from 'lucide-react'
 
 const ESTADOS  = ['pendiente', 'confirmado', 'reprogramado', 'completado', 'vencido']
 const TIPOS    = ['preventivo', 'correctivo']
@@ -192,7 +193,7 @@ export default function MantenimientoPage() {
                     <td>
                       <button className="btn btn-ghost btn-sm"
                         onClick={() => { setModalEstado(m); setNuevoEstado(''); setNuevaFecha('') }}>
-                        🔄
+                        <RefreshCw size={14} />
                       </button>
                     </td>
                   </tr>
@@ -212,7 +213,7 @@ export default function MantenimientoPage() {
           <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Actualizar mantenimiento</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}><X size={14} /></button>
             </div>
             <form onSubmit={actualizarEstado}>
               <div className="modal-body">
@@ -255,7 +256,7 @@ export default function MantenimientoPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Programar mantenimiento</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardar}>
               <div className="modal-body">

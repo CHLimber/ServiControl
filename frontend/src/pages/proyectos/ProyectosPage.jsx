@@ -3,6 +3,7 @@ import { proyectosApi } from '../../api/proyectos'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { cotizacionesApi } from '../../api/cotizaciones'
+import { Eye, RefreshCw, X } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Planificación':  'badge-gray',
@@ -226,9 +227,9 @@ export default function ProyectosPage() {
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" title="Ver historial"
-                          onClick={() => abrirDetalle(p)}>👁️</button>
+                          onClick={() => abrirDetalle(p)}><Eye size={14} /></button>
                         <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => abrirModalEstado(p)}>🔄</button>
+                          onClick={() => abrirModalEstado(p)}><RefreshCw size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -251,7 +252,7 @@ export default function ProyectosPage() {
                 <h2 className="modal-title">{detalle.titulo}</h2>
                 <code style={{ fontSize: 12, color: 'var(--text-muted)' }}>{detalle.codigo}</code>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}><X size={14} /></button>
             </div>
             <div className="modal-body">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -341,7 +342,7 @@ export default function ProyectosPage() {
           <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Cambiar estado</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEstado(null)}><X size={14} /></button>
             </div>
             <form onSubmit={cambiarEstado}>
               <div className="modal-body">
@@ -383,7 +384,7 @@ export default function ProyectosPage() {
           <div className="modal" style={{ maxWidth: 620 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Nuevo proyecto</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardar}>
               <div className="modal-body">

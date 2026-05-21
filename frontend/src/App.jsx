@@ -15,6 +15,7 @@ import AuditoriaPage from './pages/auditoria/AuditoriaPage'
 import RolesPage from './pages/roles/RolesPage'
 import BitacorasPage from './pages/bitacoras/BitacorasPage'
 import NotificacionesPage from './pages/notificaciones/NotificacionesPage'
+import PerfilPage from './pages/perfil/PerfilPage'
 import ModuloPlaceholder from './pages/ModuloPlaceholder'
 
 function RutaProtegida({ children }) {
@@ -65,6 +66,9 @@ export default function App() {
       } />
       <Route path="/roles" element={
         <RutaProtegida><RolesPage /></RutaProtegida>
+      } />
+      <Route path="/perfil" element={
+        <RutaProtegida><PerfilPage /></RutaProtegida>
       } />
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
-from ..extensions import db
-from ..models.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
-from ..models.entidad import Establecimiento
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.proyectos.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
+from ...models.entidades.entidad import Establecimiento
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('proyectos', __name__)
 
@@ -45,7 +45,7 @@ def crear():
         if not data.get(campo):
             return jsonify({'error': f'El campo {campo} es requerido'}), 400
 
-    from ..models.entidad import Sistema
+    from ...models.entidades.entidad import Sistema
     sistema = db.get_or_404(Sistema, data['id_sistema'])
     id_establecimiento = data.get('id_establecimiento') or sistema.id_establecimiento
 

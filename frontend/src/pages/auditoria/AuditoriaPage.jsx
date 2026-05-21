@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuditoria, getAuditoriaPorId, getAcciones, getModulos } from '../../api/auditoria'
+import { Search, X } from 'lucide-react'
 
 function formatFecha(iso) {
   if (!iso) return '—'
@@ -174,7 +175,7 @@ export default function AuditoriaPage() {
                     <td>
                       <button className="btn btn-ghost btn-sm" title="Ver detalle"
                         onClick={() => verDetalle(item.id)}>
-                        🔍
+                        <Search size={14} />
                       </button>
                     </td>
                   </tr>
@@ -214,7 +215,7 @@ export default function AuditoriaPage() {
           <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Detalle del registro</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDetalle(null)}><X size={14} /></button>
             </div>
             <div className="modal-body">
               {cargandoDet && <div className="empty-state">Cargando...</div>}

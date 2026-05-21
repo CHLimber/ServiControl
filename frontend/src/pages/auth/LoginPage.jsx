@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { Sun, Moon, AlertTriangle } from 'lucide-react'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -28,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="login-page" style={{ position: 'relative' }}>
       <button className="theme-toggle login-theme" onClick={toggleTema} title="Cambiar tema">
-        {tema === 'dark' ? '☀️' : '🌙'}
+        {tema === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
       <div className="login-card">
@@ -37,7 +38,7 @@ export default function LoginPage() {
           <p>Sistema de gestión para seguridad electrónica</p>
         </div>
 
-        {error && <div className="login-error">⚠️ {error}</div>}
+        {error && <div className="login-error"><AlertTriangle size={14} /> {error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

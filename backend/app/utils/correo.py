@@ -1,7 +1,7 @@
 import threading
 from flask import current_app
 from flask_mail import Message
-from .extensions import mail
+from ..extensions import mail
 
 
 def _enviar_async(app, msg):

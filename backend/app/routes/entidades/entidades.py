@@ -1,11 +1,11 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..extensions import db
-from ..models.entidad import Entidad, EntidadNatural, EntidadJuridica, Establecimiento, Sistema
-from ..models.catalogo import Telefono
-from ..models.bitacora_doc import BitacoraCliente
-from ..bitacora import log
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.entidades.entidad import Entidad, EntidadNatural, EntidadJuridica, Establecimiento, Sistema
+from ...models.catalogo.catalogo import Telefono
+from ...models.bitacoras.bitacora_doc import BitacoraCliente
+from ...utils.bitacora import log
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('entidades', __name__)
 
@@ -239,7 +239,7 @@ def crear_nota_bitacora(id_entidad):
 
 
 def _serializar_nota(n: BitacoraCliente) -> dict:
-    from ..models.auth import Usuario
+    from ...models.seguridad.auth import Usuario
     usuario = db.session.get(Usuario, n.id_usuario)
     return {
         'id': n.id,

@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
-from ..extensions import db
-from ..models.auth import Usuario, Rol
-from ..models.entidad import Empleado, Entidad
-from ..bitacora import log
-from .. import correo
-from ..permisos import requiere_permiso
+from ...extensions import db
+from ...models.seguridad.auth import Usuario, Rol
+from ...models.entidades.entidad import Empleado, Entidad
+from ...utils.bitacora import log
+from ...utils import correo
+from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('usuarios', __name__)
 

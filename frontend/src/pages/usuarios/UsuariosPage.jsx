@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import client from '../../api/client'
 import { catalogosApi } from '../../api/catalogos'
+import { Pencil, Lock, Unlock, KeyRound, X } from 'lucide-react'
 
 const usuariosApi = {
   listar:         ()           => client.get('/usuarios/'),
@@ -195,17 +196,17 @@ export default function UsuariosPage() {
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button className="btn btn-ghost btn-sm" title="Editar"
-                          onClick={() => abrirEditar(u)}>✏️</button>
+                          onClick={() => abrirEditar(u)}><Pencil size={14} /></button>
                         <button className="btn btn-ghost btn-sm"
                           title={u.estado ? 'Desactivar' : 'Activar'}
                           style={{ color: u.estado ? 'var(--danger)' : 'var(--success)' }}
                           onClick={() => toggleEstado(u)}>
-                          {u.estado ? '🔒' : '🔓'}
+                          {u.estado ? <Lock size={14} /> : <Unlock size={14} />}
                         </button>
                         {u.bloqueado && (
                           <button className="btn btn-ghost btn-sm" title="Desbloquear"
                             style={{ color: 'var(--warning)' }}
-                            onClick={() => desbloquear(u)}>🔑</button>
+                            onClick={() => desbloquear(u)}><KeyRound size={14} /></button>
                         )}
                       </div>
                     </td>
@@ -226,7 +227,7 @@ export default function UsuariosPage() {
           <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editando ? 'Editar usuario' : 'Nuevo usuario'}</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setModalAbierto(false)}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalAbierto(false)}><X size={14} /></button>
             </div>
             <form onSubmit={guardar}>
               <div className="modal-body">

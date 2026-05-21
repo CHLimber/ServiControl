@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { productosApi } from '../../api/productos'
 import { catalogosApi } from '../../api/catalogos'
+import { Pencil, Trash2, X } from 'lucide-react'
 
 const UNIDADES = ['unidad', 'caja', 'rollo', 'bolsa', 'paquete', 'metro', 'par', 'kit']
 
@@ -187,7 +188,7 @@ export default function ProductosPage() {
                           onClick={() => abrirEditar(p)}
                           title="Editar"
                         >
-                          ✏️
+                          <Pencil size={14} />
                         </button>
                         <button
                           className="btn btn-ghost btn-sm"
@@ -195,7 +196,7 @@ export default function ProductosPage() {
                           title="Desactivar"
                           style={{ color: 'var(--danger)' }}
                         >
-                          🗑️
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -216,7 +217,7 @@ export default function ProductosPage() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editando ? 'Editar producto' : 'Nuevo producto'}</h2>
-              <button className="btn btn-ghost btn-sm" onClick={cerrarModal}>✕</button>
+              <button className="btn btn-ghost btn-sm" onClick={cerrarModal}><X size={14} /></button>
             </div>
 
             <form onSubmit={guardar}>

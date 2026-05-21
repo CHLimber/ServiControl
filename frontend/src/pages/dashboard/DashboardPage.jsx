@@ -1,12 +1,13 @@
+import { Building2, Wrench, FileText, Hammer, TrendingUp, Users } from 'lucide-react'
 import { formatBs } from '../../utils'
 
 const STATS = [
-  { icon: '🏗️', color: 'blue',   valor: 12,        label: 'Proyectos activos',     delta: '+2 este mes',   tipo: 'up' },
-  { icon: '🔧', color: 'yellow', valor: 8,         label: 'OT pendientes',          delta: '3 vencidas',    tipo: 'down' },
-  { icon: '📋', color: 'purple', valor: 5,         label: 'Cotizaciones en espera', delta: '+1 hoy',        tipo: 'up' },
-  { icon: '🛠️', color: 'green',  valor: 3,         label: 'Mantenimientos próximos',delta: 'Esta semana',   tipo: 'up' },
-  { icon: '💰', color: 'green',  valor: 'Bs 42.800',label: 'Cobrado este mes',      delta: '+18% vs anterior',tipo: 'up' },
-  { icon: '👥', color: 'blue',   valor: 47,        label: 'Clientes registrados',   delta: '+4 este mes',   tipo: 'up' },
+  { icon: <Building2 size={20} />, color: 'blue',   valor: 12,         label: 'Proyectos activos',     delta: '+2 este mes',     tipo: 'up' },
+  { icon: <Wrench size={20} />,   color: 'yellow', valor: 8,          label: 'OT pendientes',          delta: '3 vencidas',      tipo: 'down' },
+  { icon: <FileText size={20} />, color: 'purple', valor: 5,          label: 'Cotizaciones en espera', delta: '+1 hoy',          tipo: 'up' },
+  { icon: <Hammer size={20} />,   color: 'green',  valor: 3,          label: 'Mantenimientos próximos',delta: 'Esta semana',     tipo: 'up' },
+  { icon: <TrendingUp size={20} />,color: 'green', valor: 'Bs 42.800',label: 'Cobrado este mes',       delta: '+18% vs anterior',tipo: 'up' },
+  { icon: <Users size={20} />,    color: 'blue',   valor: 47,         label: 'Clientes registrados',   delta: '+4 este mes',     tipo: 'up' },
 ]
 
 const PROYECTOS_RECIENTES = [

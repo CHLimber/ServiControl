@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import { useTheme } from '../../context/ThemeContext'
+import { Menu, Sun, Moon } from 'lucide-react'
 
 const TITULOS = {
   '/':              ['Dashboard',          'Resumen general del sistema'],
@@ -9,11 +10,15 @@ const TITULOS = {
   '/ordenes':       ['Órdenes de trabajo', 'Asignación y seguimiento de OT'],
   '/mantenimiento': ['Mantenimiento',      'Mantenimientos programados y correctivos'],
   '/finanzas':      ['Finanzas',           'Pagos y gastos operativos'],
+  '/catalogo':      ['Catálogo',           'Productos, categorías y proveedores'],
   '/catalogos':     ['Catálogos',          'Datos maestros del sistema'],
+  '/bitacoras':     ['Bitácoras',          'Registro de documentos y actividad'],
+  '/notificaciones':['Notificaciones',     'Alertas y avisos del sistema'],
   '/usuarios':      ['Usuarios',           'Gestión de accesos y roles'],
   '/roles':         ['Roles y Permisos',   'Gestión de roles y permisos'],
   '/auditoria':     ['Auditoría',          'Registro de actividad del sistema'],
   '/productos':     ['Productos',          'Catálogo de productos y servicios'],
+  '/perfil':        ['Mi perfil',          'Edita tu información de acceso'],
 }
 
 export default function Topbar({ onToggleSidebar }) {
@@ -24,7 +29,7 @@ export default function Topbar({ onToggleSidebar }) {
   return (
     <header className="topbar">
       <button className="hamburger" onClick={onToggleSidebar} aria-label="Abrir menú">
-        ☰
+        <Menu size={20} />
       </button>
 
       <div className="topbar-title">
@@ -33,7 +38,7 @@ export default function Topbar({ onToggleSidebar }) {
       </div>
 
       <button className="theme-toggle" onClick={toggleTema} title="Cambiar tema">
-        {tema === 'dark' ? '☀️' : '🌙'}
+        {tema === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
     </header>
   )
