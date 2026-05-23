@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ordenesApi } from '../../api/ordenes'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
-import { Eye, RefreshCw, Pencil, Star, Users, Package, X } from 'lucide-react'
+import { Eye, RefreshCw, Pencil, Star, Users, Package, X, Check } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Pendiente':   'badge-gray',
@@ -624,7 +624,7 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
               <h2 className="modal-title">Nueva orden de trabajo</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
-            <form onSubmit={guardar}>
+            <form onSubmit={guardar} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               <div className="modal-body">
                 <div className="form-grid">
                   <div className="form-group">
@@ -674,35 +674,60 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                   </div>
                 </div>
 
-                <div style={{ fontWeight: 600, margin: '16px 0 8px', fontSize: '0.9rem' }}>Técnicos asignados</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                <div style={{ fontWeight: 600, margin: '16px 0 8px', fontSize: '0.9rem' }}>
+                  Técnicos asignados
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {empleados.length === 0 && (
+                    <div className="text-muted text-sm">Cargando técnicos...</div>
+                  )}
                   {empleados.map(emp => {
                     const asignado = form.empleados.find(e => e.id_empleado === emp.id)
                     const esResp   = asignado?.es_responsable
                     return (
-                      <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                          padding: '4px 10px', borderRadius: 20,
-                          background: asignado ? 'var(--accent-light)' : 'var(--bg)',
+                      <div
+                        key={emp.id}
+                        onClick={() => toggleEmpleado(emp.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
                           border: `1px solid ${asignado ? 'var(--accent)' : 'var(--border)'}`,
-                          fontSize: '0.82rem' }}>
-                          <input type="checkbox" checked={!!asignado}
-                            onChange={() => toggleEmpleado(emp.id)} style={{ display: 'none' }} />
+                          background: asignado ? 'var(--accent-light)' : 'var(--bg)',
+                          transition: 'border-color 0.15s, background 0.15s',
+                        }}
+                      >
+                        <div style={{
+                          width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                          border: `2px solid ${asignado ? 'var(--accent)' : 'var(--border)'}`,
+                          background: asignado ? 'var(--accent)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {asignado && <Check size={11} color="white" strokeWidth={3} />}
+                        </div>
+                        <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: asignado ? 600 : 400 }}>
                           {emp.nombre}
-                          {esResp && <span style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', marginLeft: 2 }}><Star size={11} fill="currentColor" /></span>}
-                        </label>
-                        {asignado && !esResp && (
-                          <button type="button" className="btn btn-ghost btn-sm"
-                            title="Marcar como responsable"
-                            onClick={() => toggleResponsable(emp.id)}
-                            style={{ padding: '2px 6px' }}><Star size={12} /></button>
+                        </span>
+                        {asignado && (
+                          <button
+                            type="button"
+                            onClick={e => { e.stopPropagation(); toggleResponsable(emp.id) }}
+                            title={esResp ? 'Responsable principal' : 'Marcar como responsable'}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5,
+                              padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem',
+                              border: `1px solid ${esResp ? 'var(--accent)' : 'var(--border)'}`,
+                              background: esResp ? 'var(--accent)' : 'transparent',
+                              color: esResp ? 'white' : 'var(--text-muted)',
+                              cursor: 'pointer', flexShrink: 0,
+                            }}
+                          >
+                            <Star size={11} fill={esResp ? 'currentColor' : 'none'} />
+                            {esResp ? 'Responsable' : 'Hacer responsable'}
+                          </button>
                         )}
                       </div>
                     )
                   })}
-                </div>
-                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>
-                  Hacé click en <Star size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> para marcar al responsable principal.
                 </div>
 
                 <div style={{ fontWeight: 600, margin: '4px 0 8px', fontSize: '0.9rem' }}>Materiales</div>
@@ -747,36 +772,54 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
               <button className="btn btn-ghost btn-sm" onClick={() => setModalEditPersonal(false)}><X size={14} /></button>
             </div>
             <div className="modal-body">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {empleados.map(emp => {
                   const asignado = editEmpleados.find(e => e.id_empleado === emp.id)
                   const esResp   = asignado?.es_responsable
                   return (
-                    <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <label style={{
-                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                        padding: '4px 10px', borderRadius: 20,
-                        background: asignado ? 'var(--accent-light)' : 'var(--bg)',
+                    <div
+                      key={emp.id}
+                      onClick={() => toggleEditEmpleado(emp.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
                         border: `1px solid ${asignado ? 'var(--accent)' : 'var(--border)'}`,
-                        fontSize: '0.82rem',
+                        background: asignado ? 'var(--accent-light)' : 'var(--bg)',
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                    >
+                      <div style={{
+                        width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                        border: `2px solid ${asignado ? 'var(--accent)' : 'var(--border)'}`,
+                        background: asignado ? 'var(--accent)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <input type="checkbox" checked={!!asignado}
-                          onChange={() => toggleEditEmpleado(emp.id)} style={{ display: 'none' }} />
+                        {asignado && <Check size={11} color="white" strokeWidth={3} />}
+                      </div>
+                      <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: asignado ? 600 : 400 }}>
                         {emp.nombre}
-                        {esResp && <Star size={11} fill="var(--accent)" color="var(--accent)" />}
-                      </label>
-                      {asignado && !esResp && (
-                        <button type="button" className="btn btn-ghost btn-sm"
-                          title="Marcar como responsable"
-                          onClick={() => toggleEditResponsable(emp.id)}
-                          style={{ padding: '2px 6px' }}><Star size={12} /></button>
+                      </span>
+                      {asignado && (
+                        <button
+                          type="button"
+                          onClick={e => { e.stopPropagation(); toggleEditResponsable(emp.id) }}
+                          title={esResp ? 'Responsable principal' : 'Marcar como responsable'}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem',
+                            border: `1px solid ${esResp ? 'var(--accent)' : 'var(--border)'}`,
+                            background: esResp ? 'var(--accent)' : 'transparent',
+                            color: esResp ? 'white' : 'var(--text-muted)',
+                            cursor: 'pointer', flexShrink: 0,
+                          }}
+                        >
+                          <Star size={11} fill={esResp ? 'currentColor' : 'none'} />
+                          {esResp ? 'Responsable' : 'Hacer responsable'}
+                        </button>
                       )}
                     </div>
                   )
                 })}
-              </div>
-              <div className="text-muted text-sm">
-                Hacé click en <Star size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> para marcar al responsable principal.
               </div>
             </div>
             <div className="modal-footer">

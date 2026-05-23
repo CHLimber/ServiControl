@@ -485,7 +485,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
               <h2 className="modal-title">Nueva cotización</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalCrear(false)}><X size={14} /></button>
             </div>
-            <form onSubmit={guardar}>
+            <form onSubmit={guardar} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               <div className="modal-body">
                 <div className="form-grid">
                   <div className="form-group">
@@ -653,7 +653,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
               <h2 className="modal-title">Editar cotización — {modalEditar.codigo}</h2>
               <button className="btn btn-ghost btn-sm" onClick={() => setModalEditar(null)}><X size={14} /></button>
             </div>
-            <form onSubmit={guardarEdicion}>
+            <form onSubmit={guardarEdicion} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               <div className="modal-body">
 
                 {/* Tabla de productos */}

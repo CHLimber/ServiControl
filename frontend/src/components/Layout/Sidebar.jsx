@@ -28,35 +28,14 @@ const MENU = [
           { to: '/clientes/sistemas',         icon: <Settings size={13} />, label: 'Sistemas instalados' },
         ],
       },
-      {
-        id: 'cotizaciones', icon: <FileText size={16} />, label: 'Cotizaciones',
-        paths: ['/cotizaciones'],
-        children: [
-          { to: '/cotizaciones',       icon: <List size={13} />, label: 'Lista de cotizaciones' },
-          { to: '/cotizaciones/nueva', icon: <Plus size={13} />, label: 'Nueva cotización' },
-        ],
-      },
+      { to: '/cotizaciones', icon: <FileText size={16} />, label: 'Cotizaciones' },
     ],
   },
   {
     section: 'OPERACIONES',
     items: [
-      {
-        id: 'proyectos', icon: <Building2 size={16} />, label: 'Proyectos',
-        paths: ['/proyectos'],
-        children: [
-          { to: '/proyectos',       icon: <List size={13} />, label: 'Lista de proyectos' },
-          { to: '/proyectos/nuevo', icon: <Plus size={13} />, label: 'Nuevo proyecto' },
-        ],
-      },
-      {
-        id: 'ordenes', icon: <Wrench size={16} />, label: 'Órdenes de trabajo',
-        paths: ['/ordenes'],
-        children: [
-          { to: '/ordenes',       icon: <List size={13} />, label: 'Lista de órdenes' },
-          { to: '/ordenes/nueva', icon: <Plus size={13} />, label: 'Nueva orden' },
-        ],
-      },
+      { to: '/proyectos', icon: <Building2 size={16} />, label: 'Proyectos' },
+      { to: '/ordenes',   icon: <Wrench size={16} />,   label: 'Órdenes de trabajo' },
       {
         id: 'mantenimiento', icon: <Hammer size={16} />, label: 'Mantenimiento',
         paths: ['/mantenimiento'],
