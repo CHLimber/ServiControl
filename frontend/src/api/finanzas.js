@@ -6,5 +6,5 @@ export const finanzasApi = {
   crearPago:      (data)   => client.post('/finanzas/pagos/', data),
   listarGastos:   ()       => client.get('/finanzas/gastos/'),
   crearGasto:     (data)   => client.post('/finanzas/gastos/', data),
-  cuentasCobrar:  ()       => client.get('/finanzas/cuentas-cobrar/'),
+  cuentasCobrar:  ()       => client.get('/finanzas/cuentas-por-cobrar'),
 }

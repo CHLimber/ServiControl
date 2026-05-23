@@ -135,6 +135,7 @@ export default function PerfilPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="correo@ejemplo.com"
+                maxLength={100}
               />
             </div>
 
@@ -153,6 +154,7 @@ export default function PerfilPage() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Mínimo 8 caracteres"
                   autoComplete="new-password"
+                  maxLength={255}
                 />
               </div>
               <div className="form-group">
@@ -164,6 +166,7 @@ export default function PerfilPage() {
                   onChange={e => setConfirmar(e.target.value)}
                   placeholder="Repite la contraseña"
                   autoComplete="new-password"
+                  maxLength={255}
                 />
               </div>
             </div>

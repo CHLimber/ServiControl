@@ -260,7 +260,7 @@ export default function UsuariosPage() {
                     <label className="form-label">Email</label>
                     <input type="email" className="input" value={form.email}
                       onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="correo@empresa.com" />
+                      placeholder="correo@empresa.com" maxLength={100} />
                   </div>
 
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -270,7 +270,7 @@ export default function UsuariosPage() {
                     <input type="password" className="input" value={form.password}
                       onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                       placeholder={editando ? 'Nueva contraseña...' : 'Mínimo 6 caracteres'}
-                      autoComplete="new-password" />
+                      autoComplete="new-password" maxLength={255} />
                   </div>
                 </div>
                 {errForm && <div className="alert alert-danger" style={{ marginTop: 12 }}>{errForm}</div>}

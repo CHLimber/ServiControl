@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
-from ...models.mantenimiento.mantenimiento import Mantenimiento
+from ...models.mantenimiento.mantenimiento import Mantenimiento, AlertaMantenimiento
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
 
@@ -82,6 +82,30 @@ def actualizar(id_mantenimiento):
     log('ACTUALIZAR_MANTENIMIENTO', f"Mantenimiento {id_mantenimiento} → estado '{m.estado}'",
         id_usuario=id_usuario, modulo='mantenimiento')
     return jsonify(_serializar(m))
+
+
+@bp.get('/alertas')
+@jwt_required()
+@requiere_permiso('ver_mantenimientos')
+def listar_alertas():
+    alertas = (
+        AlertaMantenimiento.query
+        .order_by(AlertaMantenimiento.fecha.desc())
+        .all()
+    )
+    return jsonify([_serializar_alerta(a) for a in alertas])
+
+
+def _serializar_alerta(a: AlertaMantenimiento) -> dict:
+    return {
+        'id': a.id,
+        'id_mantenimiento': a.id_mantenimiento,
+        'id_usuario': a.id_usuario,
+        'id_establecimiento': a.id_establecimiento,
+        'fecha': a.fecha.isoformat() if a.fecha else None,
+        'estado': a.estado,
+        'observacion': a.observacion,
+    }
 
 
 def _serializar(m: Mantenimiento) -> dict:

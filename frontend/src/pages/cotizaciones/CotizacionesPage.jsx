@@ -433,7 +433,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                   <label className="form-label">Nombre del sistema *</label>
                   <input className="input" value={formSistema.nombre}
                     onChange={e => setFormSistema(f => ({ ...f, nombre: e.target.value }))}
-                    placeholder="Ej: CCTV Oficina Principal" />
+                    placeholder="Ej: CCTV Oficina Principal" maxLength={150} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Tipo de sistema *</label>
@@ -447,7 +447,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                   <label className="form-label">Dirección del establecimiento</label>
                   <input className="input" value={formSistema.direccion}
                     onChange={e => setFormSistema(f => ({ ...f, direccion: e.target.value }))}
-                    placeholder="Solo requerida si el cliente no tiene establecimientos" />
+                    placeholder="Solo requerida si el cliente no tiene establecimientos" maxLength={255} />
                 </div>
                 <div className="form-group">
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

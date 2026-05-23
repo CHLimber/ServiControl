@@ -331,7 +331,7 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost"
-                onClick={() => { abrirModalEstado(detalle); setDetalle(null) }}>
+                onClick={() => abrirModalEstado(detalle)}>
                 Cambiar estado
               </button>
             </div>

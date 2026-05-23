@@ -14,6 +14,17 @@ def listar():
     return jsonify([_serializar(n) for n in notifs])
 
 
+@bp.get('/no-leidas')
+@jwt_required()
+def no_leidas():
+    id_usuario = int(get_jwt_identity())
+    notifs = (Notificacion.query
+              .filter_by(id_usuario=id_usuario, leida=False)
+              .order_by(Notificacion.fecha_creacion.desc())
+              .all())
+    return jsonify([_serializar(n) for n in notifs])
+
+
 @bp.put('/leer-todas')
 @jwt_required()
 def marcar_todas_leidas():

@@ -367,7 +367,7 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
                     <label className="form-label">Email</label>
                     <input type="email" className="input" value={form.email}
                       onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="contacto@empresa.com" />
+                      placeholder="contacto@empresa.com" maxLength={100} />
                   </div>
 
                 </div>

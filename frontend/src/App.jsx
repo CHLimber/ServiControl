@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
 import {
-  ClipboardList, FolderOpen,
   Tag, Truck, List, BarChart3, Download, AlertTriangle, UserCog,
 } from 'lucide-react'
 
@@ -16,7 +15,9 @@ import MantenimientoPage   from './pages/mantenimiento/MantenimientoPage'
 import FinanzasPage        from './pages/finanzas/FinanzasPage'
 import EstablecimientosPage from './pages/establecimientos/EstablecimientosPage'
 import SistemasPage        from './pages/sistemas/SistemasPage'
-import BitacorasClientePage from './pages/bitacoras/BitacorasClientePage'
+import BitacorasClientePage   from './pages/bitacoras/BitacorasClientePage'
+import BitacorasProyectoPage from './pages/bitacoras/BitacorasProyectoPage'
+import DocumentosPage        from './pages/bitacoras/DocumentosPage'
 import UsuariosPage        from './pages/usuarios/UsuariosPage'
 import AuditoriaPage       from './pages/auditoria/AuditoriaPage'
 import RolesPage           from './pages/roles/RolesPage'
@@ -76,8 +77,8 @@ export default function App() {
 
       {/* Registros — Bitácoras */}
       <Route path="/bitacoras/cliente"    element={<RutaProtegida><BitacorasClientePage /></RutaProtegida>} />
-      <Route path="/bitacoras/proyecto"   element={P('Bitácora por proyecto', 'Historial de notas registradas sobre proyectos', <ClipboardList size={32} />)} />
-      <Route path="/bitacoras/documentos" element={P('Documentos adjuntos', 'Documentos adjuntos a proyectos o entidades', <FolderOpen size={32} />)} />
+      <Route path="/bitacoras/proyecto"   element={<RutaProtegida><BitacorasProyectoPage /></RutaProtegida>} />
+      <Route path="/bitacoras/documentos" element={<RutaProtegida><DocumentosPage /></RutaProtegida>} />
 
       {/* Configuración — Personal */}
       <Route path="/personal/empleados" element={P('Empleados', 'Gestión de empleados, cargos y especialidades', <UserCog size={32} />)} />

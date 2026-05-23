@@ -26,6 +26,71 @@ def listar_permisos():
     return jsonify([{'id': p.id, 'nombre': p.nombre, 'descripcion': p.descripcion} for p in permisos])
 
 
+@bp.post('/')
+@jwt_required()
+@requiere_permiso('gestionar_roles')
+def crear():
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    nombre = (data.get('nombre') or '').strip()
+    if not nombre:
+        return jsonify({'error': 'El nombre del rol es requerido'}), 400
+    if Rol.query.filter_by(nombre=nombre).first():
+        return jsonify({'error': 'Ya existe un rol con ese nombre'}), 409
+
+    rol = Rol(nombre=nombre, descripcion=(data.get('descripcion') or '').strip() or None)
+    db.session.add(rol)
+    db.session.commit()
+    log('CREAR_ROL', f"Rol '{nombre}' creado", id_usuario=id_usuario, modulo='roles')
+    return jsonify(_serializar_rol(rol)), 201
+
+
+@bp.put('/<int:id_rol>')
+@jwt_required()
+@requiere_permiso('gestionar_roles')
+def actualizar(id_rol):
+    rol = db.get_or_404(Rol, id_rol)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    if 'nombre' in data:
+        nombre = data['nombre'].strip()
+        if not nombre:
+            return jsonify({'error': 'El nombre no puede estar vacío'}), 400
+        existente = Rol.query.filter_by(nombre=nombre).first()
+        if existente and existente.id != id_rol:
+            return jsonify({'error': 'Ya existe un rol con ese nombre'}), 409
+        rol.nombre = nombre
+    if 'descripcion' in data:
+        rol.descripcion = (data['descripcion'] or '').strip() or None
+
+    db.session.commit()
+    log('ACTUALIZAR_ROL', f"Rol {id_rol} actualizado", id_usuario=id_usuario, modulo='roles')
+    return jsonify(_serializar_rol(rol))
+
+
+@bp.delete('/<int:id_rol>')
+@jwt_required()
+@requiere_permiso('gestionar_roles')
+def eliminar(id_rol):
+    from ...models.seguridad.auth import Usuario
+    rol = db.get_or_404(Rol, id_rol)
+    id_usuario = int(get_jwt_identity())
+
+    if rol.nombre == ROL_ADMIN:
+        return jsonify({'error': 'No se puede eliminar el rol Administrador'}), 403
+    if Usuario.query.filter_by(id_rol=id_rol).first():
+        return jsonify({'error': 'No se puede eliminar un rol con usuarios asignados'}), 409
+
+    nombre = rol.nombre
+    RolPermiso.query.filter_by(id_rol=id_rol).delete()
+    db.session.delete(rol)
+    db.session.commit()
+    log('ELIMINAR_ROL', f"Rol '{nombre}' eliminado", id_usuario=id_usuario, modulo='roles')
+    return jsonify({'mensaje': f"Rol '{nombre}' eliminado"})
+
+
 @bp.get('/<int:id_rol>')
 @jwt_required()
 @requiere_permiso('gestionar_roles')

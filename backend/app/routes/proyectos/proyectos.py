@@ -4,6 +4,8 @@ from datetime import datetime
 from ...extensions import db
 from ...models.proyectos.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
 from ...models.entidades.entidad import Establecimiento
+from ...models.bitacoras.bitacora_doc import BitacoraProyecto, Documento
+from ...models.catalogo.catalogo import TipoDocumento
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
 
@@ -134,6 +136,129 @@ def actualizar(id_proyecto):
     log('ACTUALIZAR_PROYECTO', f"Proyecto {id_proyecto} actualizado",
         id_usuario=id_usuario, modulo='proyectos', detalles=cambios or None)
     return jsonify(_serializar(p, detalle=True))
+
+
+# ── Bitácora de proyecto ─────────────────────────────────────────
+
+@bp.get('/<int:id_proyecto>/bitacora')
+@jwt_required()
+@requiere_permiso('ver_proyectos')
+def listar_bitacora(id_proyecto):
+    db.get_or_404(Proyecto, id_proyecto)
+    notas = (
+        BitacoraProyecto.query
+        .filter_by(id_proyecto=id_proyecto)
+        .order_by(BitacoraProyecto.fecha_creacion.desc())
+        .all()
+    )
+    return jsonify([_serializar_nota(n) for n in notas])
+
+
+@bp.post('/<int:id_proyecto>/bitacora')
+@jwt_required()
+@requiere_permiso('ver_proyectos')
+def crear_nota_bitacora(id_proyecto):
+    proyecto = db.get_or_404(Proyecto, id_proyecto)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    nota_texto = (data.get('nota') or '').strip()
+    if not nota_texto:
+        return jsonify({'error': 'La nota no puede estar vacía'}), 400
+
+    nota = BitacoraProyecto(
+        id_proyecto=id_proyecto,
+        id_usuario=id_usuario,
+        nota=nota_texto,
+    )
+    db.session.add(nota)
+    db.session.commit()
+
+    log('NOTA_BITACORA_PROYECTO', f"Nota registrada en proyecto '{proyecto.codigo}'",
+        id_usuario=id_usuario, modulo='proyectos')
+    return jsonify(_serializar_nota(nota)), 201
+
+
+def _serializar_nota(n: BitacoraProyecto) -> dict:
+    from ...models.seguridad.auth import Usuario
+    usuario = db.session.get(Usuario, n.id_usuario)
+    return {
+        'id': n.id,
+        'id_proyecto': n.id_proyecto,
+        'id_usuario': n.id_usuario,
+        'usuario': usuario.username if usuario else '—',
+        'nota': n.nota,
+        'fecha_creacion': n.fecha_creacion.isoformat() if n.fecha_creacion else None,
+    }
+
+
+# ── Documentos de proyecto ───────────────────────────────────────
+
+@bp.get('/<int:id_proyecto>/documentos')
+@jwt_required()
+@requiere_permiso('ver_proyectos')
+def listar_documentos(id_proyecto):
+    db.get_or_404(Proyecto, id_proyecto)
+    docs = (
+        Documento.query
+        .filter_by(id_proyecto=id_proyecto)
+        .order_by(Documento.fecha_subida.desc())
+        .all()
+    )
+    return jsonify([_serializar_documento(d) for d in docs])
+
+
+@bp.post('/<int:id_proyecto>/documentos')
+@jwt_required()
+@requiere_permiso('ver_proyectos')
+def crear_documento(id_proyecto):
+    proyecto = db.get_or_404(Proyecto, id_proyecto)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    nombre = (data.get('nombre') or '').strip()
+    ruta = (data.get('ruta') or '').strip()
+    id_tipo = data.get('id_tipo_documento')
+
+    if not nombre:
+        return jsonify({'error': 'El nombre del documento es requerido'}), 400
+    if not ruta:
+        return jsonify({'error': 'La ruta o URL del documento es requerida'}), 400
+    if not id_tipo:
+        return jsonify({'error': 'El tipo de documento es requerido'}), 400
+
+    doc = Documento(
+        id_proyecto=id_proyecto,
+        id_usuario=id_usuario,
+        id_tipo_documento=id_tipo,
+        nombre=nombre,
+        ruta=ruta,
+        descripcion=(data.get('descripcion') or '').strip() or None,
+    )
+    db.session.add(doc)
+    db.session.commit()
+
+    log('SUBIR_DOCUMENTO', f"Documento '{nombre}' agregado al proyecto '{proyecto.codigo}'",
+        id_usuario=id_usuario, modulo='proyectos')
+    return jsonify(_serializar_documento(doc)), 201
+
+
+def _serializar_documento(d: Documento) -> dict:
+    from ...models.seguridad.auth import Usuario
+    usuario = db.session.get(Usuario, d.id_usuario)
+    tipo = db.session.get(TipoDocumento, d.id_tipo_documento) if d.id_tipo_documento else None
+    return {
+        'id': d.id,
+        'id_proyecto': d.id_proyecto,
+        'id_usuario': d.id_usuario,
+        'usuario': usuario.username if usuario else '—',
+        'id_tipo_documento': d.id_tipo_documento,
+        'tipo_documento': tipo.nombre if tipo else '—',
+        'nombre': d.nombre,
+        'ruta': d.ruta,
+        'descripcion': d.descripcion,
+        'fecha_subida': d.fecha_subida.isoformat() if d.fecha_subida else None,
+    }
 
 
 def _serializar(p: Proyecto, detalle: bool = False) -> dict:
