@@ -810,10 +810,18 @@ textarea.input { resize: vertical; }
 
 .modal-title { font-size: 1.05rem; font-weight: 700; }
 
+.modal > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .modal-body {
   padding: 20px 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .modal-footer {

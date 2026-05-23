@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
-from ...models.catalogo.catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Especialidad
+from ...models.catalogo.catalogo import TipoDocumento, Municipio, TipoEstablecimiento, TipoSistema, Servicio, Categoria, Especialidad, Cargo
 from ...models.catalogo.proveedor import Proveedor
 from ...models.entidades.entidad import Empleado, Entidad
 
@@ -42,7 +42,7 @@ def servicios():
         'id': s.id,
         'nombre': s.nombre,
         'precio': float(s.precio)
-    } for s in Servicio.query.all()])
+    } for s in Servicio.query.filter_by(estado=True).all()])
 
 
 @bp.get('/categorias')
@@ -52,11 +52,18 @@ def categorias():
                     for c in Categoria.query.filter_by(estado=True).all()])
 
 
+@bp.get('/cargos')
+@jwt_required()
+def cargos():
+    return jsonify([{'id': c.id, 'nombre': c.nombre}
+                    for c in Cargo.query.order_by(Cargo.nombre).all()])
+
+
 @bp.get('/especialidades')
 @jwt_required()
 def especialidades():
     return jsonify([{'id': e.id, 'nombre': e.nombre}
-                    for e in Especialidad.query.all()])
+                    for e in Especialidad.query.order_by(Especialidad.nombre).all()])
 
 
 @bp.get('/proveedores')

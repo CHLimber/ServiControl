@@ -7,6 +7,7 @@ export const catalogosApi = {
   tiposSistema: () => client.get('/catalogos/tipos-sistema'),
   servicios: () => client.get('/catalogos/servicios'),
   categorias: () => client.get('/catalogos/categorias'),
+  cargos:         () => client.get('/catalogos/cargos'),
   especialidades: () => client.get('/catalogos/especialidades'),
   proveedores:    () => client.get('/catalogos/proveedores'),
   empleados:      () => client.get('/catalogos/empleados'),

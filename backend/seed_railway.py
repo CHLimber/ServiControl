@@ -110,7 +110,8 @@ def seed_passwords():
 def aplicar_migraciones_permisos():
     """Inserta permisos nuevos y los asigna al rol Administrador si aún no existen."""
     permisos_nuevos = [
-        ('gestionar_roles', 'Gestionar roles y permisos del sistema'),
+        ('gestionar_roles',     'Gestionar roles y permisos del sistema'),
+        ('gestionar_empleados', 'Crear, editar y desactivar empleados'),
     ]
     conn = get_conn()
     cursor = conn.cursor()
@@ -139,10 +140,11 @@ def aplicar_migraciones_permisos():
 def aplicar_migraciones_pendientes():
     """ALTER TABLE idempotentes y CREATE TABLE IF NOT EXISTS para BDs creadas con DDL anterior."""
     columnas_a_agregar = [
-        ('usuario', 'intentos_fallidos', 'SMALLINT NOT NULL DEFAULT 0'),
-        ('usuario', 'bloqueado_hasta',   'DATETIME NULL'),
-        ('usuario', 'veces_bloqueado',   'SMALLINT NOT NULL DEFAULT 0'),
-        ('usuario', 'ultima_salida',     'DATETIME NULL'),
+        ('usuario',  'intentos_fallidos', 'SMALLINT NOT NULL DEFAULT 0'),
+        ('usuario',  'bloqueado_hasta',   'DATETIME NULL'),
+        ('usuario',  'veces_bloqueado',   'SMALLINT NOT NULL DEFAULT 0'),
+        ('usuario',  'ultima_salida',     'DATETIME NULL'),
+        ('servicio', 'estado',            'BOOLEAN NOT NULL DEFAULT TRUE'),
     ]
     tablas_a_crear = [
         (
@@ -171,6 +173,61 @@ def aplicar_migraciones_pendientes():
                 valor_anterior TEXT NULL,
                 valor_nuevo TEXT NULL,
                 CONSTRAINT fk_bitdet_bitacora FOREIGN KEY (id_bitacora) REFERENCES bitacora(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'producto_proveedor',
+            """CREATE TABLE IF NOT EXISTS producto_proveedor (
+                id_producto         INT NOT NULL,
+                id_proveedor        INT NOT NULL,
+                precio_unitario     DECIMAL(12,2) NOT NULL,
+                es_principal        BOOLEAN DEFAULT FALSE,
+                fecha_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id_producto, id_proveedor),
+                CONSTRAINT fk_prod_prov_producto  FOREIGN KEY (id_producto)  REFERENCES producto(id)  ON DELETE CASCADE,
+                CONSTRAINT fk_prod_prov_proveedor FOREIGN KEY (id_proveedor) REFERENCES proveedor(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'telefono_proveedor',
+            """CREATE TABLE IF NOT EXISTS telefono_proveedor (
+                id_telefono  INT NOT NULL,
+                id_proveedor INT NOT NULL,
+                PRIMARY KEY (id_telefono, id_proveedor),
+                CONSTRAINT fk_tel_prov_telefono  FOREIGN KEY (id_telefono)  REFERENCES telefono(id)  ON DELETE CASCADE,
+                CONSTRAINT fk_tel_prov_proveedor FOREIGN KEY (id_proveedor) REFERENCES proveedor(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'telefono_entidad',
+            """CREATE TABLE IF NOT EXISTS telefono_entidad (
+                id_telefono INT NOT NULL,
+                id_entidad  INT NOT NULL,
+                PRIMARY KEY (id_telefono, id_entidad),
+                CONSTRAINT fk_telefono_entidad_telefono FOREIGN KEY (id_telefono) REFERENCES telefono(id) ON DELETE CASCADE,
+                CONSTRAINT fk_telefono_entidad_entidad  FOREIGN KEY (id_entidad)  REFERENCES entidad(id)  ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'empleado_especialidad',
+            """CREATE TABLE IF NOT EXISTS empleado_especialidad (
+                id_empleado     INT NOT NULL,
+                id_especialidad INT NOT NULL,
+                PRIMARY KEY (id_empleado, id_especialidad),
+                CONSTRAINT fk_emp_esp_empleado     FOREIGN KEY (id_empleado)     REFERENCES empleado(id)     ON DELETE CASCADE,
+                CONSTRAINT fk_emp_esp_especialidad FOREIGN KEY (id_especialidad) REFERENCES especialidad(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'bitacora_cliente',
+            """CREATE TABLE IF NOT EXISTS bitacora_cliente (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                id_entidad INT NOT NULL,
+                id_usuario INT NOT NULL,
+                nota TEXT NOT NULL,
+                fecha_creacion DATETIME NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_bitcli_entidad FOREIGN KEY (id_entidad) REFERENCES entidad(id) ON DELETE CASCADE,
+                CONSTRAINT fk_bitcli_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
         ),
     ]

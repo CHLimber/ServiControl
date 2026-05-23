@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { entidadesApi } from '../../api/entidades'
-import { NotebookPen, Pencil, Trash2, X } from 'lucide-react'
+import { NotebookPen, Pencil, Trash2, X, Phone, Plus } from 'lucide-react'
 
 const FORM_NATURAL = {
   tipo: 'natural', nombre: '', ci: '', sexo: '', fecha_nacimiento: '',
-  email: '', cliente: true, empleado: false,
+  email: '', cliente: true, empleado: false, telefonos: [''],
 }
 const FORM_JURIDICA = {
   tipo: 'juridica', razon_social: '', nombre_comercial: '', nit: '',
-  email: '', cliente: true, empleado: false,
+  email: '', cliente: true, empleado: false, telefonos: [''],
 }
 
 function formatFechaHora(iso) {
@@ -59,14 +59,17 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
 
   function abrirEditar(e) {
     setEditando(e)
+    const tels = e.telefonos && e.telefonos.length > 0 ? e.telefonos : ['']
     if (e.tipo === 'natural') {
       setForm({ tipo: 'natural', nombre: e.nombre || '', ci: e.ci || '',
                 sexo: e.sexo || '', fecha_nacimiento: e.fecha_nacimiento || '',
-                email: e.email || '', cliente: e.cliente, empleado: e.empleado })
+                email: e.email || '', cliente: e.cliente, empleado: e.empleado,
+                telefonos: tels })
     } else {
       setForm({ tipo: 'juridica', razon_social: e.nombre || '',
                 nombre_comercial: e.nombre_comercial || '', nit: e.nit || '',
-                email: e.email || '', cliente: e.cliente, empleado: e.empleado })
+                email: e.email || '', cliente: e.cliente, empleado: e.empleado,
+                telefonos: tels })
     }
     setErrForm('')
     setModalAbierto(true)
@@ -79,8 +82,27 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
   }
 
   function cambiarTipo(tipo) {
-    setForm(tipo === 'natural' ? FORM_NATURAL : FORM_JURIDICA)
+    setForm(tipo === 'natural' ? { ...FORM_NATURAL } : { ...FORM_JURIDICA })
     setErrForm('')
+  }
+
+  function agregarTelefono() {
+    setForm(f => ({ ...f, telefonos: [...f.telefonos, ''] }))
+  }
+
+  function cambiarTelefono(idx, valor) {
+    setForm(f => {
+      const tels = [...f.telefonos]
+      tels[idx] = valor
+      return { ...f, telefonos: tels }
+    })
+  }
+
+  function quitarTelefono(idx) {
+    setForm(f => {
+      const tels = f.telefonos.filter((_, i) => i !== idx)
+      return { ...f, telefonos: tels.length > 0 ? tels : [''] }
+    })
   }
 
   async function guardar(e) {
@@ -88,11 +110,12 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
     setGuardando(true)
     setErrForm('')
     try {
+      const payload = { ...form, telefonos: form.telefonos.filter(t => t.trim()) }
       if (editando) {
-        const data = await entidadesApi.actualizar(editando.id, form)
+        const data = await entidadesApi.actualizar(editando.id, payload)
         setEntidades(prev => prev.map(x => x.id === editando.id ? data : x))
       } else {
-        const data = await entidadesApi.crear(form)
+        const data = await entidadesApi.crear(payload)
         setEntidades(prev => [...prev, data])
       }
       cerrarModal()
@@ -185,6 +208,7 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
                   <th>Tipo</th>
                   <th>Documento</th>
                   <th>Email</th>
+                  <th>Teléfonos</th>
                   <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
@@ -201,6 +225,18 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
                       {e.tipo === 'natural' ? `CI: ${e.ci}` : e.nit ? `NIT: ${e.nit}` : '—'}
                     </td>
                     <td className="text-sm text-muted">{e.email || '—'}</td>
+                    <td className="text-sm">
+                      {e.telefonos && e.telefonos.length > 0
+                        ? e.telefonos.map((t, i) => (
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3,
+                              background: 'var(--bg)', border: '1px solid var(--border)',
+                              borderRadius: 4, padding: '1px 6px', fontSize: 12, marginRight: 4 }}>
+                              <Phone size={10} style={{ opacity: 0.5 }} />{t}
+                            </span>
+                          ))
+                        : <span className="text-muted">—</span>
+                      }
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {e.cliente && (
@@ -295,84 +331,131 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
 
             <form onSubmit={guardar}>
               <div className="modal-body">
-                {!editando && (
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                    <button type="button"
-                      className={`btn ${form.tipo === 'natural' ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ flex: 1 }} onClick={() => cambiarTipo('natural')}>
-                      Persona natural
-                    </button>
-                    <button type="button"
-                      className={`btn ${form.tipo === 'juridica' ? 'btn-primary' : 'btn-ghost'}`}
-                      style={{ flex: 1 }} onClick={() => cambiarTipo('juridica')}>
-                      Persona jurídica
-                    </button>
-                  </div>
-                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                <div className="form-grid">
+                  {/* Selector tipo (solo al crear) */}
+                  {!editando && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button"
+                        className={`btn ${form.tipo === 'natural' ? 'btn-primary' : 'btn-ghost'}`}
+                        style={{ flex: 1 }} onClick={() => cambiarTipo('natural')}>
+                        Persona natural
+                      </button>
+                      <button type="button"
+                        className={`btn ${form.tipo === 'juridica' ? 'btn-primary' : 'btn-ghost'}`}
+                        style={{ flex: 1 }} onClick={() => cambiarTipo('juridica')}>
+                        Persona jurídica
+                      </button>
+                    </div>
+                  )}
+
                   {form.tipo === 'natural' ? (
                     <>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      {/* Nombre */}
+                      <div>
                         <label className="form-label">Nombre completo *</label>
                         <input className="input" value={form.nombre}
                           onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
                           placeholder="Ej: Juan Carlos Pérez Ríos" maxLength={150} />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">CI *</label>
-                        <input className="input" value={form.ci}
-                          onChange={e => setForm(f => ({ ...f, ci: e.target.value }))}
-                          placeholder="Ej: 7654321 SC" maxLength={20} />
+                      {/* CI | Sexo */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          <label className="form-label">CI *</label>
+                          <input className="input" value={form.ci}
+                            onChange={e => setForm(f => ({ ...f, ci: e.target.value }))}
+                            placeholder="Ej: 7654321 SC" maxLength={20} />
+                        </div>
+                        <div>
+                          <label className="form-label">Sexo</label>
+                          <select className="input" value={form.sexo}
+                            onChange={e => setForm(f => ({ ...f, sexo: e.target.value }))}>
+                            <option value="">Sin especificar</option>
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                          </select>
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Sexo</label>
-                        <select className="input" value={form.sexo}
-                          onChange={e => setForm(f => ({ ...f, sexo: e.target.value }))}>
-                          <option value="">Sin especificar</option>
-                          <option value="M">Masculino</option>
-                          <option value="F">Femenino</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Fecha de nacimiento</label>
-                        <input type="date" className="input" value={form.fecha_nacimiento}
-                          onChange={e => setForm(f => ({ ...f, fecha_nacimiento: e.target.value }))} />
+                      {/* Fecha nacimiento | Email */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          <label className="form-label">Fecha de nacimiento</label>
+                          <input type="date" className="input" value={form.fecha_nacimiento}
+                            onChange={e => setForm(f => ({ ...f, fecha_nacimiento: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="form-label">Email</label>
+                          <input type="email" className="input" value={form.email}
+                            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                            placeholder="contacto@cliente.com" maxLength={100} />
+                        </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                      {/* Razón social */}
+                      <div>
                         <label className="form-label">Razón social *</label>
                         <input className="input" value={form.razon_social}
                           onChange={e => setForm(f => ({ ...f, razon_social: e.target.value }))}
                           placeholder="Ej: Importadora Rojas SRL" maxLength={200} />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Nombre comercial</label>
-                        <input className="input" value={form.nombre_comercial}
-                          onChange={e => setForm(f => ({ ...f, nombre_comercial: e.target.value }))}
-                          placeholder="Ej: Rojas Import" maxLength={150} />
+                      {/* Nombre comercial | NIT */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          <label className="form-label">Nombre comercial</label>
+                          <input className="input" value={form.nombre_comercial}
+                            onChange={e => setForm(f => ({ ...f, nombre_comercial: e.target.value }))}
+                            placeholder="Ej: Rojas Import" maxLength={150} />
+                        </div>
+                        <div>
+                          <label className="form-label">NIT</label>
+                          <input className="input" value={form.nit}
+                            onChange={e => setForm(f => ({ ...f, nit: e.target.value }))}
+                            placeholder="Ej: 123456789" maxLength={20} />
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">NIT</label>
-                        <input className="input" value={form.nit}
-                          onChange={e => setForm(f => ({ ...f, nit: e.target.value }))}
-                          placeholder="Ej: 123456789" maxLength={20} />
+                      {/* Email */}
+                      <div>
+                        <label className="form-label">Email</label>
+                        <input type="email" className="input" value={form.email}
+                          onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                          placeholder="contacto@empresa.com" maxLength={100} />
                       </div>
                     </>
                   )}
 
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Email</label>
-                    <input type="email" className="input" value={form.email}
-                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="contacto@empresa.com" maxLength={100} />
+                  {/* Teléfonos */}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <label className="form-label" style={{ margin: 0 }}>Teléfonos</label>
+                      <button type="button" className="btn btn-ghost btn-sm"
+                        onClick={agregarTelefono}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                        <Plus size={12} /> Agregar
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {form.telefonos.map((tel, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Phone size={14} style={{ opacity: 0.4, flexShrink: 0 }} />
+                          <input className="input" style={{ flex: 1 }} value={tel}
+                            onChange={e => cambiarTelefono(idx, e.target.value)}
+                            placeholder="Ej: 77234561" maxLength={20} />
+                          {form.telefonos.length > 1 && (
+                            <button type="button" className="btn btn-ghost btn-sm"
+                              onClick={() => quitarTelefono(idx)}
+                              style={{ color: 'var(--danger)', flexShrink: 0 }}>
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
+                  {errForm && <div className="alert alert-danger">{errForm}</div>}
                 </div>
-
-                {errForm && <div className="alert alert-danger" style={{ marginTop: 12 }}>{errForm}</div>}
               </div>
 
               <div className="modal-footer">

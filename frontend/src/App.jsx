@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
 import {
-  Tag, Truck, List, BarChart3, Download, AlertTriangle, UserCog,
+  BarChart3, Download, AlertTriangle,
 } from 'lucide-react'
 
 import LoginPage           from './pages/auth/LoginPage'
@@ -22,7 +22,11 @@ import UsuariosPage        from './pages/usuarios/UsuariosPage'
 import AuditoriaPage       from './pages/auditoria/AuditoriaPage'
 import RolesPage           from './pages/roles/RolesPage'
 import CatalogoPage        from './pages/catalogo/CatalogoPage'
+import CategoriasPage      from './pages/categorias/CategoriasPage'
+import ServiciosPage       from './pages/servicios/ServiciosPage'
+import ProveedoresPage     from './pages/proveedores/ProveedoresPage'
 import NotificacionesPage  from './pages/notificaciones/NotificacionesPage'
+import EmpleadosPage       from './pages/empleados/EmpleadosPage'
 import PerfilPage          from './pages/perfil/PerfilPage'
 import ModuloPlaceholder   from './pages/ModuloPlaceholder'
 
@@ -81,15 +85,15 @@ export default function App() {
       <Route path="/bitacoras/documentos" element={<RutaProtegida><DocumentosPage /></RutaProtegida>} />
 
       {/* Configuración — Personal */}
-      <Route path="/personal/empleados" element={P('Empleados', 'Gestión de empleados, cargos y especialidades', <UserCog size={32} />)} />
+      <Route path="/personal/empleados" element={<RutaProtegida><EmpleadosPage /></RutaProtegida>} />
       <Route path="/personal/usuarios"  element={<RutaProtegida><UsuariosPage /></RutaProtegida>} />
       <Route path="/personal/roles"     element={<RutaProtegida><RolesPage /></RutaProtegida>} />
 
       {/* Configuración — Catálogo */}
       <Route path="/catalogo/productos"   element={<RutaProtegida><CatalogoPage /></RutaProtegida>} />
-      <Route path="/catalogo/categorias"  element={P('Categorías', 'Categorías para organizar los productos del catálogo', <Tag size={32} />)} />
-      <Route path="/catalogo/proveedores" element={P('Proveedores', 'Proveedores con catálogo de productos y precios', <Truck size={32} />)} />
-      <Route path="/catalogo/servicios"   element={P('Servicios', 'Servicios disponibles con nombre y precio base', <List size={32} />)} />
+      <Route path="/catalogo/categorias"  element={<RutaProtegida><CategoriasPage /></RutaProtegida>} />
+      <Route path="/catalogo/proveedores" element={<RutaProtegida><ProveedoresPage /></RutaProtegida>} />
+      <Route path="/catalogo/servicios"   element={<RutaProtegida><ServiciosPage /></RutaProtegida>} />
 
       {/* Sistema */}
       <Route path="/notificaciones"     element={<RutaProtegida><NotificacionesPage /></RutaProtegida>} />
