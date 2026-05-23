@@ -3,7 +3,7 @@ import { cotizacionesApi } from '../../api/cotizaciones'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { productosApi } from '../../api/productos'
-import { Eye, X } from 'lucide-react'
+import { Eye, Pencil, X } from 'lucide-react'
 
 const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada', 'vencida']
 
@@ -21,7 +21,7 @@ function formatBs(n) {
   return `Bs ${Number(n).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
 }
 
-export default function CotizacionesPage() {
+export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const [cotizaciones, setCotizaciones] = useState([])
   const [cargando, setCargando]         = useState(true)
   const [error, setError]               = useState(null)
@@ -47,13 +47,22 @@ export default function CotizacionesPage() {
   const [guardando, setGuardando]       = useState(false)
   const [errForm, setErrForm]           = useState('')
 
+  // Modal editar cotización en borrador (CU16)
+  const [modalEditar, setModalEditar]       = useState(null)  // objeto cotizacion o null
+  const [formEditar, setFormEditar]         = useState({ mano_de_obra: 0, vigencia_dias: 30, observacion: '', detalles: [] })
+  const [guardandoEditar, setGuardandoEditar] = useState(false)
+  const [errEditar, setErrEditar]           = useState('')
+
   // Mini-modal nuevo sistema
   const [modalSistema, setModalSistema] = useState(false)
   const [formSistema, setFormSistema]   = useState({ nombre: '', id_tipo_sistema: '', tiene_mantenimiento: false, periodicidad_dias: '', direccion: '' })
   const [guardandoSistema, setGuardandoSistema] = useState(false)
   const [errSistema, setErrSistema]     = useState('')
 
-  useEffect(() => { cargarCotizaciones() }, [])
+  useEffect(() => {
+    cargarCotizaciones()
+    if (abrirCrearInicial) setModalCrear(true)
+  }, [])
 
   async function cargarCotizaciones() {
     try {
@@ -180,6 +189,70 @@ export default function CotizacionesPage() {
     }
   }
 
+  // CU16 — abrir edición de cotización en borrador
+  async function abrirEditar(cot) {
+    setFormEditar({
+      mano_de_obra:  cot.mano_de_obra,
+      vigencia_dias: cot.vigencia_dias,
+      observacion:   cot.observacion || '',
+      detalles: (cot.detalles || []).map(d => ({
+        id_producto:    d.id_producto,
+        id_proveedor:   d.id_proveedor,
+        cantidad:       d.cantidad,
+        precio_unitario: d.precio_unitario,
+        observacion:    d.observacion || '',
+      })),
+    })
+    setErrEditar('')
+    setModalEditar(cot)
+    if (productos.length === 0 || proveedores.length === 0) {
+      const [provs, prods] = await Promise.all([catalogosApi.proveedores(), productosApi.listar()])
+      if (proveedores.length === 0) setProveedores(provs)
+      if (productos.length === 0)   setProductos(prods)
+    }
+  }
+
+  function agregarFilaEditar() {
+    setFormEditar(f => ({ ...f, detalles: [...f.detalles, { ...FILA_VACIA }] }))
+  }
+  function eliminarFilaEditar(idx) {
+    setFormEditar(f => ({ ...f, detalles: f.detalles.filter((_, i) => i !== idx) }))
+  }
+  function actualizarFilaEditar(idx, campo, valor) {
+    setFormEditar(f => ({
+      ...f,
+      detalles: f.detalles.map((d, i) => i === idx ? { ...d, [campo]: valor } : d),
+    }))
+  }
+
+  async function guardarEdicion(e) {
+    e.preventDefault()
+    const detallesValidos = formEditar.detalles.filter(
+      d => d.id_producto && d.id_proveedor && d.cantidad > 0 && d.precio_unitario > 0
+    )
+    if (detallesValidos.length === 0) {
+      setErrEditar('Agregá al menos un producto con cantidad y precio.')
+      return
+    }
+    setGuardandoEditar(true)
+    setErrEditar('')
+    try {
+      await cotizacionesApi.actualizar(modalEditar.id, {
+        mano_de_obra:  formEditar.mano_de_obra,
+        vigencia_dias: formEditar.vigencia_dias,
+        observacion:   formEditar.observacion,
+      })
+      const actualizada = await cotizacionesApi.editarDetalles(modalEditar.id, { detalles: detallesValidos })
+      setCotizaciones(prev => prev.map(c => c.id === modalEditar.id ? actualizada : c))
+      if (detalle?.id === modalEditar.id) setDetalle(actualizada)
+      setModalEditar(null)
+    } catch (err) {
+      setErrEditar(err.error || 'Error al guardar.')
+    } finally {
+      setGuardandoEditar(false)
+    }
+  }
+
   async function cambiarEstado(id, estado) {
     try {
       const actualizada = await cotizacionesApi.cambiarEstado(id, estado)
@@ -290,15 +363,17 @@ export default function CotizacionesPage() {
                       <thead>
                         <tr>
                           <th>Producto</th>
-                          <th>Cantidad</th>
-                          <th>P. Unit.</th>
-                          <th>Subtotal</th>
+                          <th>Proveedor</th>
+                          <th style={{ width: 70 }}>Cant.</th>
+                          <th style={{ width: 110 }}>P. Unit.</th>
+                          <th style={{ width: 110 }}>Subtotal</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(detalle.detalles || []).map((d, i) => (
                           <tr key={i}>
-                            <td className="text-sm">Prod. #{d.id_producto}</td>
+                            <td className="text-sm">{d.nombre_producto || `Prod. #${d.id_producto}`}</td>
+                            <td className="text-sm text-muted">{d.nombre_proveedor || `Prov. #${d.id_proveedor}`}</td>
                             <td className="text-sm">{d.cantidad}</td>
                             <td className="text-sm">{formatBs(d.precio_unitario)}</td>
                             <td className="text-sm">{formatBs(d.subtotal)}</td>
@@ -315,6 +390,9 @@ export default function CotizacionesPage() {
                 </div>
                 {detalle.estado === 'borrador' && (
                   <div className="modal-footer">
+                    <button className="btn btn-ghost" onClick={() => abrirEditar(detalle)}>
+                      <Pencil size={14} style={{ marginRight: 6 }} />Editar
+                    </button>
                     <button className="btn btn-ghost" onClick={() => cambiarEstado(detalle.id, 'enviada')}>
                       Marcar como enviada
                     </button>
@@ -560,6 +638,126 @@ export default function CotizacionesPage() {
                 <button type="button" className="btn btn-ghost" onClick={() => setModalCrear(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={guardando}>
                   {guardando ? 'Guardando...' : 'Crear cotización'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar cotización borrador — CU16 */}
+      {modalEditar && (
+        <div className="modal-overlay" onClick={() => setModalEditar(null)}>
+          <div className="modal" style={{ maxWidth: 720 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Editar cotización — {modalEditar.codigo}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEditar(null)}><X size={14} /></button>
+            </div>
+            <form onSubmit={guardarEdicion}>
+              <div className="modal-body">
+
+                {/* Tabla de productos */}
+                <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.9rem' }}>Productos</div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Proveedor</th>
+                        <th style={{ width: 80 }}>Cantidad</th>
+                        <th style={{ width: 120 }}>P. Unitario</th>
+                        <th style={{ width: 110 }}>Subtotal</th>
+                        <th style={{ width: 40 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formEditar.detalles.map((fila, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <select className="input" value={fila.id_producto}
+                              onChange={e => actualizarFilaEditar(idx, 'id_producto', Number(e.target.value) || '')}>
+                              <option value="">Seleccioná</option>
+                              {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <select className="input" value={fila.id_proveedor}
+                              onChange={e => actualizarFilaEditar(idx, 'id_proveedor', Number(e.target.value) || '')}>
+                              <option value="">Seleccioná</option>
+                              {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <input type="number" className="input" min="0.01" step="0.01"
+                              value={fila.cantidad}
+                              onChange={e => actualizarFilaEditar(idx, 'cantidad', e.target.value)} />
+                          </td>
+                          <td>
+                            <input type="number" className="input" min="0" step="0.01"
+                              value={fila.precio_unitario}
+                              onChange={e => actualizarFilaEditar(idx, 'precio_unitario', e.target.value)} />
+                          </td>
+                          <td className="text-sm" style={{ textAlign: 'right' }}>
+                            {formatBs(subtotalFila(fila))}
+                          </td>
+                          <td>
+                            {formEditar.detalles.length > 1 && (
+                              <button type="button" className="btn btn-ghost btn-sm"
+                                style={{ color: 'var(--danger)' }}
+                                onClick={() => eliminarFilaEditar(idx)}><X size={14} /></button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 8 }}
+                  onClick={agregarFilaEditar}>
+                  + Agregar producto
+                </button>
+
+                <div className="form-grid" style={{ marginTop: 20 }}>
+                  <div className="form-group">
+                    <label className="form-label">Mano de obra (Bs)</label>
+                    <input type="number" className="input" min="0" step="0.01"
+                      value={formEditar.mano_de_obra}
+                      onChange={e => setFormEditar(f => ({ ...f, mano_de_obra: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Vigencia (días)</label>
+                    <input type="number" className="input" min="1"
+                      value={formEditar.vigencia_dias}
+                      onChange={e => setFormEditar(f => ({ ...f, vigencia_dias: Number(e.target.value) }))} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Observación</label>
+                    <textarea className="input" rows={2} value={formEditar.observacion}
+                      onChange={e => setFormEditar(f => ({ ...f, observacion: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right', marginTop: 8 }}>
+                  <div className="text-sm text-muted">
+                    Subtotal productos: {formatBs(formEditar.detalles.reduce((s, f) => s + subtotalFila(f), 0))}
+                  </div>
+                  <div className="text-sm text-muted">
+                    Mano de obra: {formatBs(formEditar.mano_de_obra || 0)}
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '1.05rem', marginTop: 4 }}>
+                    Total: {formatBs(
+                      formEditar.detalles.reduce((s, f) => s + subtotalFila(f), 0) +
+                      (parseFloat(formEditar.mano_de_obra) || 0)
+                    )}
+                  </div>
+                </div>
+
+                {errEditar && <div className="alert alert-danger" style={{ marginTop: 12 }}>{errEditar}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setModalEditar(null)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={guardandoEditar}>
+                  {guardandoEditar ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>

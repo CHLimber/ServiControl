@@ -4,11 +4,11 @@ import { NotebookPen, Pencil, Trash2, X } from 'lucide-react'
 
 const FORM_NATURAL = {
   tipo: 'natural', nombre: '', ci: '', sexo: '', fecha_nacimiento: '',
-  email: '', cliente: false, empleado: false,
+  email: '', cliente: true, empleado: false,
 }
 const FORM_JURIDICA = {
   tipo: 'juridica', razon_social: '', nombre_comercial: '', nit: '',
-  email: '', cliente: false, empleado: false,
+  email: '', cliente: true, empleado: false,
 }
 
 function formatFechaHora(iso) {
@@ -16,12 +16,11 @@ function formatFechaHora(iso) {
   return new Date(iso).toLocaleString('es-BO')
 }
 
-export default function EntidadesPage() {
+export default function EntidadesPage({ abrirCrearInicial = false }) {
   const [entidades, setEntidades]     = useState([])
   const [cargando, setCargando]       = useState(true)
   const [error, setError]             = useState(null)
   const [busqueda, setBusqueda]       = useState('')
-  const [filtroRol, setFiltroRol]     = useState('')
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando]       = useState(null)
   const [form, setForm]               = useState(FORM_NATURAL)
@@ -35,7 +34,10 @@ export default function EntidadesPage() {
   const [nuevaNota, setNuevaNota]     = useState('')
   const [guardandoNota, setGuardandoNota] = useState(false)
 
-  useEffect(() => { cargarDatos() }, [])
+  useEffect(() => {
+    cargarDatos()
+    if (abrirCrearInicial) setModalAbierto(true)
+  }, [])
 
   async function cargarDatos() {
     try {
@@ -144,48 +146,36 @@ export default function EntidadesPage() {
   }
 
   const filtradas = entidades.filter(e => {
+    if (!e.cliente) return false
     const txt = (e.nombre + (e.ci || '') + (e.nit || '')).toLowerCase()
-    const coincideBusqueda = txt.includes(busqueda.toLowerCase())
-    const coincideRol =
-      filtroRol === '' ||
-      (filtroRol === 'cliente' && e.cliente) ||
-      (filtroRol === 'empleado' && e.empleado)
-    return coincideBusqueda && coincideRol
+    return txt.includes(busqueda.toLowerCase())
   })
 
   return (
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Entidades</h1>
-          <p className="page-subtitle">Clientes y empleados registrados</p>
+          <h1 className="page-title">Clientes</h1>
+          <p className="page-subtitle">Personas naturales y jurídicas registradas como clientes</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva entidad</button>
+        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo cliente</button>
       </div>
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <input className="input" style={{ flex: 1, minWidth: 200 }}
-            placeholder="Buscar por nombre, CI o NIT..."
-            value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-          <select className="input" style={{ minWidth: 160 }}
-            value={filtroRol} onChange={e => setFiltroRol(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="cliente">Solo clientes</option>
-            <option value="empleado">Solo empleados</option>
-          </select>
-        </div>
+        <input className="input"
+          placeholder="Buscar por nombre, CI o NIT..."
+          value={busqueda} onChange={e => setBusqueda(e.target.value)} />
       </div>
 
       {/* Tabla */}
       <div className="card">
         {cargando ? (
-          <div className="empty-state">Cargando entidades...</div>
+          <div className="empty-state">Cargando clientes...</div>
         ) : error ? (
           <div className="empty-state" style={{ color: 'var(--danger)' }}>{error}</div>
         ) : filtradas.length === 0 ? (
-          <div className="empty-state">No se encontraron entidades.</div>
+          <div className="empty-state">No se encontraron clientes.</div>
         ) : (
           <div className="table-wrap">
             <table>
@@ -195,7 +185,6 @@ export default function EntidadesPage() {
                   <th>Tipo</th>
                   <th>Documento</th>
                   <th>Email</th>
-                  <th>Rol</th>
                   <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
@@ -212,13 +201,6 @@ export default function EntidadesPage() {
                       {e.tipo === 'natural' ? `CI: ${e.ci}` : e.nit ? `NIT: ${e.nit}` : '—'}
                     </td>
                     <td className="text-sm text-muted">{e.email || '—'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {e.cliente  && <span className="badge badge-green">Cliente</span>}
-                        {e.empleado && <span className="badge badge-yellow">Empleado</span>}
-                        {!e.cliente && !e.empleado && <span className="text-muted text-sm">—</span>}
-                      </div>
-                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {e.cliente && (
@@ -237,7 +219,7 @@ export default function EntidadesPage() {
           </div>
         )}
         <div className="text-muted text-sm" style={{ padding: '10px 0 0' }}>
-          {filtradas.length} entidad{filtradas.length !== 1 ? 'es' : ''}
+          {filtradas.length} cliente{filtradas.length !== 1 ? 's' : ''}
         </div>
       </div>
 
@@ -307,7 +289,7 @@ export default function EntidadesPage() {
         <div className="modal-overlay" onClick={cerrarModal}>
           <div className="modal" onClick={ev => ev.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">{editando ? 'Editar entidad' : 'Nueva entidad'}</h2>
+              <h2 className="modal-title">{editando ? 'Editar cliente' : 'Nuevo cliente'}</h2>
               <button className="btn btn-ghost btn-sm" onClick={cerrarModal}><X size={14} /></button>
             </div>
 
@@ -388,21 +370,6 @@ export default function EntidadesPage() {
                       placeholder="contacto@empresa.com" />
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Rol</label>
-                    <div style={{ display: 'flex', gap: 20, marginTop: 4 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={form.cliente}
-                          onChange={e => setForm(f => ({ ...f, cliente: e.target.checked }))} />
-                        <span>Cliente</span>
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={form.empleado}
-                          onChange={e => setForm(f => ({ ...f, empleado: e.target.checked }))} />
-                        <span>Empleado</span>
-                      </label>
-                    </div>
-                  </div>
                 </div>
 
                 {errForm && <div className="alert alert-danger" style={{ marginTop: 12 }}>{errForm}</div>}
@@ -411,7 +378,7 @@ export default function EntidadesPage() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={cerrarModal}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={guardando}>
-                  {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear entidad'}
+                  {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear cliente'}
                 </button>
               </div>
             </form>

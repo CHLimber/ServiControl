@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react'
-import client from '../../api/client'
+import { usuariosApi } from '../../api/usuarios'
 import { catalogosApi } from '../../api/catalogos'
 import { Pencil, Lock, Unlock, KeyRound, X } from 'lucide-react'
-
-const usuariosApi = {
-  listar:         ()           => client.get('/usuarios/'),
-  roles:          ()           => client.get('/usuarios/roles'),
-  crear:          (data)       => client.post('/usuarios/', data),
-  actualizar:     (id, data)   => client.put(`/usuarios/${id}`, data),
-  cambiarEstado:  (id)         => client.patch(`/usuarios/${id}/estado`),
-  desbloquear:    (id)         => client.patch(`/usuarios/${id}/desbloquear`),
-}
 
 const FORM_VACIO = { username: '', password: '', email: '', id_rol: '', id_empleado: '' }
 

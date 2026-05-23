@@ -23,7 +23,7 @@ function formatFechaHora(iso) {
   return new Date(iso).toLocaleString('es-BO')
 }
 
-export default function ProyectosPage() {
+export default function ProyectosPage({ abrirCrearInicial = false }) {
   const [proyectos, setProyectos]     = useState([])
   const [cargando, setCargando]       = useState(true)
   const [error, setError]             = useState(null)
@@ -53,7 +53,10 @@ export default function ProyectosPage() {
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [obsEstado, setObsEstado]     = useState('')
 
-  useEffect(() => { cargarProyectos() }, [])
+  useEffect(() => {
+    cargarProyectos()
+    if (abrirCrearInicial) setModalCrear(true)
+  }, [])
 
   async function cargarProyectos() {
     try {

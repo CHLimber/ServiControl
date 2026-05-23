@@ -4,6 +4,8 @@ from decimal import Decimal
 from ...extensions import db
 from ...models.cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
 from ...models.seguridad.auth import Usuario
+from ...models.catalogo.producto import Producto
+from ...models.entidades.entidad import Entidad
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
 
@@ -185,11 +187,17 @@ def _serializar(c: Cotizacion, detalle: bool = False) -> dict:
         'fecha_creacion': c.fecha_creacion.isoformat() if c.fecha_creacion else None,
     }
     if detalle:
+        prod_ids = [d.id_producto for d in c.detalles]
+        prov_ids = [d.id_proveedor for d in c.detalles]
+        prods_map = {p.id: p.nombre for p in Producto.query.filter(Producto.id.in_(prod_ids)).all()} if prod_ids else {}
+        provs_map = {e.id: e.nombre for e in Entidad.query.filter(Entidad.id.in_(prov_ids)).all()} if prov_ids else {}
         data['detalles'] = [
             {
                 'id': d.id,
                 'id_producto': d.id_producto,
+                'nombre_producto': prods_map.get(d.id_producto, f'Producto #{d.id_producto}'),
                 'id_proveedor': d.id_proveedor,
+                'nombre_proveedor': provs_map.get(d.id_proveedor, f'Proveedor #{d.id_proveedor}'),
                 'cantidad': float(d.cantidad),
                 'precio_unitario': float(d.precio_unitario),
                 'subtotal': float(d.subtotal),
@@ -198,3 +206,51 @@ def _serializar(c: Cotizacion, detalle: bool = False) -> dict:
             for d in c.detalles
         ]
     return data
+
+
+@bp.put('/<int:id_cotizacion>/detalles')
+@jwt_required()
+@requiere_permiso('crear_cotizaciones')
+def actualizar_detalles(id_cotizacion):
+    """CU16 — Reemplaza todos los detalles de una cotización en borrador."""
+    c = db.get_or_404(Cotizacion, id_cotizacion)
+    if c.estado != 'borrador':
+        return jsonify({'error': 'Solo se pueden editar cotizaciones en borrador'}), 400
+
+    data = request.get_json()
+    nuevos = data.get('detalles', [])
+    username = get_jwt_identity()
+
+    if not isinstance(nuevos, list) or len(nuevos) == 0:
+        return jsonify({'error': 'Debe incluir al menos un producto'}), 400
+
+    subtotal_productos = Decimal('0')
+    for d in nuevos:
+        if not d.get('id_producto') or not d.get('id_proveedor'):
+            return jsonify({'error': 'Cada detalle requiere id_producto e id_proveedor'}), 400
+        try:
+            cantidad = Decimal(str(d['cantidad']))
+            precio   = Decimal(str(d['precio_unitario']))
+        except Exception:
+            return jsonify({'error': 'Cantidad y precio deben ser números válidos'}), 400
+        subtotal_productos += cantidad * precio
+
+    CotizacionDetalle.query.filter_by(id_cotizacion=id_cotizacion).delete()
+    for d in nuevos:
+        cantidad = Decimal(str(d['cantidad']))
+        precio   = Decimal(str(d['precio_unitario']))
+        db.session.add(CotizacionDetalle(
+            id_cotizacion=id_cotizacion,
+            id_producto=d['id_producto'],
+            id_proveedor=d['id_proveedor'],
+            cantidad=cantidad,
+            precio_unitario=precio,
+            subtotal=cantidad * precio,
+            observacion=d.get('observacion', ''),
+        ))
+
+    c.subtotal_productos = subtotal_productos
+    db.session.commit()
+    log('ACTUALIZAR_DETALLES_COTIZACION', f"Detalles de {c.codigo} actualizados",
+        id_usuario=_get_usuario_id(username), modulo='cotizaciones')
+    return jsonify(_serializar(c, detalle=True))

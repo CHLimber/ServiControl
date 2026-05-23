@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ordenesApi } from '../../api/ordenes'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
-import { Eye, RefreshCw, Pencil, Star, X } from 'lucide-react'
+import { Eye, RefreshCw, Pencil, Star, Users, Package, X } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Pendiente':   'badge-gray',
@@ -22,7 +22,7 @@ function formatFechaHora(iso) {
   return new Date(iso).toLocaleString('es-BO')
 }
 
-export default function OrdenesPage() {
+export default function OrdenesPage({ abrirCrearInicial = false }) {
   const [ordenes, setOrdenes]       = useState([])
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState(null)
@@ -51,12 +51,25 @@ export default function OrdenesPage() {
   const [guardando, setGuardando]   = useState(false)
   const [errForm, setErrForm]       = useState('')
 
+  // Modal editar personal — CU23
+  const [modalEditPersonal, setModalEditPersonal]   = useState(false)
+  const [editEmpleados, setEditEmpleados]           = useState([])
+  const [guardandoPersonal, setGuardandoPersonal]   = useState(false)
+
+  // Modal editar materiales — CU24
+  const [modalEditMateriales, setModalEditMateriales] = useState(false)
+  const [editProductos, setEditProductos]             = useState([])
+  const [guardandoMat, setGuardandoMat]               = useState(false)
+
   // Modal cambio estado
   const [modalEstado, setModalEstado] = useState(null)
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [obsEstado, setObsEstado]   = useState('')
 
-  useEffect(() => { cargarOrdenes() }, [])
+  useEffect(() => {
+    cargarOrdenes()
+    if (abrirCrearInicial) setModalCrear(true)
+  }, [])
 
   async function cargarOrdenes() {
     try {
@@ -188,6 +201,87 @@ export default function OrdenesPage() {
       setErrForm(err.error || 'Error al crear la orden.')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  // CU23 — abrir modal editar personal
+  async function abrirEditPersonal() {
+    setEditEmpleados((detalle?.empleados || []).map(e => ({ ...e })))
+    setModalEditPersonal(true)
+    if (empleados.length === 0) {
+      const emps = await catalogosApi.empleados()
+      setEmpleados(emps)
+    }
+  }
+
+  function toggleEditEmpleado(id_empleado) {
+    setEditEmpleados(prev => {
+      const existe = prev.find(e => e.id_empleado === id_empleado)
+      if (existe) return prev.filter(e => e.id_empleado !== id_empleado)
+      return [...prev, { id_empleado, es_responsable: prev.length === 0 }]
+    })
+  }
+
+  function toggleEditResponsable(id_empleado) {
+    setEditEmpleados(prev => prev.map(e => ({ ...e, es_responsable: e.id_empleado === id_empleado })))
+  }
+
+  async function guardarPersonal() {
+    setGuardandoPersonal(true)
+    try {
+      const actualizada = await ordenesApi.actualizarEmpleados(detalle.id, { empleados: editEmpleados })
+      setDetalle(actualizada)
+      setOrdenes(prev => prev.map(o => o.id === actualizada.id ? actualizada : o))
+      setModalEditPersonal(false)
+    } catch {
+      alert('No se pudo actualizar el personal.')
+    } finally {
+      setGuardandoPersonal(false)
+    }
+  }
+
+  // CU24 — abrir modal editar materiales
+  async function abrirEditMateriales() {
+    setEditProductos((detalle?.productos || []).map(p => ({
+      id_producto: p.id_producto,
+      cantidad_asignada: p.cantidad_asignada,
+    })))
+    setModalEditMateriales(true)
+    if (productos.length === 0) {
+      const prods = await import('../../api/productos').then(m => m.productosApi.listar())
+      setProductos(prods)
+    }
+  }
+
+  function agregarEditProducto() {
+    setEditProductos(prev => [...prev, { id_producto: '', cantidad_asignada: 1 }])
+  }
+
+  function actualizarEditProducto(idx, campo, valor) {
+    setEditProductos(prev => prev.map((p, i) => i === idx ? { ...p, [campo]: valor } : p))
+  }
+
+  function quitarEditProducto(idx) {
+    setEditProductos(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function guardarMateriales() {
+    const validos = editProductos.filter(p => p.id_producto && p.cantidad_asignada > 0)
+    setGuardandoMat(true)
+    try {
+      const actualizada = await ordenesApi.actualizarMateriales(detalle.id, { productos: validos })
+      setDetalle(actualizada)
+      setConsumos((actualizada.productos || []).map(p => ({
+        id_producto: p.id_producto,
+        cantidad_usada: p.cantidad_usada ?? '',
+        observacion: p.observacion ?? '',
+      })))
+      setOrdenes(prev => prev.map(o => o.id === actualizada.id ? actualizada : o))
+      setModalEditMateriales(false)
+    } catch {
+      alert('No se pudo actualizar los materiales.')
+    } finally {
+      setGuardandoMat(false)
     }
   }
 
@@ -323,25 +417,62 @@ export default function OrdenesPage() {
                 <p className="text-sm" style={{ marginBottom: 16 }}>{detalle.descripcion}</p>
               )}
 
+              {/* CU23 — Personal asignado */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Users size={15} /> Personal asignado
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={abrirEditPersonal}>
+                  <Pencil size={13} style={{ marginRight: 4 }} />Editar personal
+                </button>
+              </div>
+              {cargandoDetalle ? (
+                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Cargando...</div>
+              ) : !detalle.empleados || detalle.empleados.length === 0 ? (
+                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Sin personal asignado.</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                  {detalle.empleados.map(e => (
+                    <span key={e.id_empleado} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      padding: '4px 10px', borderRadius: 20, fontSize: '0.82rem',
+                      background: 'var(--bg)', border: '1px solid var(--border)',
+                    }}>
+                      {e.nombre_empleado}
+                      {e.es_responsable && <Star size={11} fill="var(--accent)" color="var(--accent)" />}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* CU25 — Materiales y consumo */}
               {cargandoDetalle ? (
                 <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Cargando materiales...</div>
               ) : detalle.productos && detalle.productos.length > 0 && (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600 }}>Materiales</div>
-                    {!modoConsumo ? (
-                      <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(true)}>
-                        <Pencil size={13} /> Reportar consumo
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(false)}>Cancelar</button>
-                        <button className="btn btn-primary btn-sm" onClick={guardarConsumo} disabled={guardandoConsumo}>
-                          {guardandoConsumo ? 'Guardando...' : 'Guardar consumo'}
+                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Package size={15} /> Materiales
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {!modoConsumo && (
+                        <button className="btn btn-ghost btn-sm" onClick={abrirEditMateriales}>
+                          <Pencil size={13} style={{ marginRight: 4 }} />Editar asignación
                         </button>
-                      </div>
-                    )}
+                      )}
+                      {!modoConsumo ? (
+                        <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(true)}>
+                          Reportar consumo
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(false)}>Cancelar</button>
+                          <button className="btn btn-primary btn-sm" onClick={guardarConsumo} disabled={guardandoConsumo}>
+                            {guardandoConsumo ? 'Guardando...' : 'Guardar consumo'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="table-wrap" style={{ marginBottom: 20 }}>
                     <table>
@@ -603,6 +734,99 @@ export default function OrdenesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal editar personal — CU23 ── */}
+      {modalEditPersonal && detalle && (
+        <div className="modal-overlay" onClick={() => setModalEditPersonal(false)}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Editar personal — {detalle.codigo}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEditPersonal(false)}><X size={14} /></button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                {empleados.map(emp => {
+                  const asignado = editEmpleados.find(e => e.id_empleado === emp.id)
+                  const esResp   = asignado?.es_responsable
+                  return (
+                    <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                        padding: '4px 10px', borderRadius: 20,
+                        background: asignado ? 'var(--accent-light)' : 'var(--bg)',
+                        border: `1px solid ${asignado ? 'var(--accent)' : 'var(--border)'}`,
+                        fontSize: '0.82rem',
+                      }}>
+                        <input type="checkbox" checked={!!asignado}
+                          onChange={() => toggleEditEmpleado(emp.id)} style={{ display: 'none' }} />
+                        {emp.nombre}
+                        {esResp && <Star size={11} fill="var(--accent)" color="var(--accent)" />}
+                      </label>
+                      {asignado && !esResp && (
+                        <button type="button" className="btn btn-ghost btn-sm"
+                          title="Marcar como responsable"
+                          onClick={() => toggleEditResponsable(emp.id)}
+                          style={{ padding: '2px 6px' }}><Star size={12} /></button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="text-muted text-sm">
+                Hacé click en <Star size={11} style={{ display: 'inline', verticalAlign: 'middle' }} /> para marcar al responsable principal.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalEditPersonal(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={guardandoPersonal} onClick={guardarPersonal}>
+                {guardandoPersonal ? 'Guardando...' : 'Guardar personal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal editar materiales asignados — CU24 ── */}
+      {modalEditMateriales && detalle && (
+        <div className="modal-overlay" onClick={() => setModalEditMateriales(false)}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Editar materiales — {detalle.codigo}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalEditMateriales(false)}><X size={14} /></button>
+            </div>
+            <div className="modal-body">
+              {editProductos.map((prod, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <select className="input" style={{ flex: 2 }} value={prod.id_producto}
+                    onChange={e => actualizarEditProducto(idx, 'id_producto', Number(e.target.value) || '')}>
+                    <option value="">Seleccioná producto</option>
+                    {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                  <input type="number" className="input" style={{ width: 90 }} min="0.01" step="0.01"
+                    value={prod.cantidad_asignada}
+                    onChange={e => actualizarEditProducto(idx, 'cantidad_asignada', e.target.value)}
+                    placeholder="Cant." />
+                  <button type="button" className="btn btn-ghost btn-sm"
+                    style={{ color: 'var(--danger)' }} onClick={() => quitarEditProducto(idx)}><X size={14} /></button>
+                </div>
+              ))}
+              <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 4 }}
+                onClick={agregarEditProducto}>
+                + Agregar material
+              </button>
+              <div className="text-muted text-sm" style={{ marginTop: 10 }}>
+                El consumo ya reportado se preserva para los productos que permanezcan.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalEditMateriales(false)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={guardandoMat} onClick={guardarMateriales}>
+                {guardandoMat ? 'Guardando...' : 'Guardar materiales'}
+              </button>
+            </div>
           </div>
         </div>
       )}

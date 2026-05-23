@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
 from ...models.notificaciones.notificacion import Notificacion
@@ -14,13 +14,37 @@ def listar():
     return jsonify([_serializar(n) for n in notifs])
 
 
+@bp.put('/leer-todas')
+@jwt_required()
+def marcar_todas_leidas():
+    id_usuario = int(get_jwt_identity())
+    Notificacion.query.filter_by(id_usuario=id_usuario, leida=False).update({'leida': True})
+    db.session.commit()
+    return jsonify({'mensaje': 'Todas las notificaciones marcadas como leídas'})
+
+
 @bp.put('/<int:id_notificacion>/leer')
 @jwt_required()
 def marcar_leida(id_notificacion):
+    id_usuario = int(get_jwt_identity())
     n = db.get_or_404(Notificacion, id_notificacion)
+    if n.id_usuario != id_usuario:
+        abort(403)
     n.leida = True
     db.session.commit()
     return jsonify({'mensaje': 'Notificación marcada como leída'})
+
+
+@bp.delete('/<int:id_notificacion>')
+@jwt_required()
+def eliminar(id_notificacion):
+    id_usuario = int(get_jwt_identity())
+    n = db.get_or_404(Notificacion, id_notificacion)
+    if n.id_usuario != id_usuario:
+        abort(403)
+    db.session.delete(n)
+    db.session.commit()
+    return jsonify({'mensaje': 'Notificación eliminada'})
 
 
 def _serializar(n: Notificacion) -> dict:

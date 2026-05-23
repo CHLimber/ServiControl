@@ -182,6 +182,66 @@ def reportar_consumo(id_orden):
     return jsonify(_serializar(o, detalle=True))
 
 
+@bp.put('/<int:id_orden>/empleados')
+@jwt_required()
+@requiere_permiso('editar_ordenes')
+def actualizar_empleados(id_orden):
+    """CU23 — Reemplaza el personal asignado a una OT."""
+    o = db.get_or_404(OrdenTrabajo, id_orden)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    OrdenEmpleado.query.filter_by(id_orden_trabajo=id_orden).delete()
+    for emp in data.get('empleados', []):
+        if not emp.get('id_empleado'):
+            continue
+        db.session.add(OrdenEmpleado(
+            id_orden_trabajo=id_orden,
+            id_empleado=emp['id_empleado'],
+            es_responsable=emp.get('es_responsable', False),
+        ))
+
+    db.session.commit()
+    log('ACTUALIZAR_EMPLEADOS_OT', f"Personal actualizado en orden {o.codigo}",
+        id_usuario=id_usuario, modulo='ordenes')
+    return jsonify(_serializar(o, detalle=True))
+
+
+@bp.put('/<int:id_orden>/materiales')
+@jwt_required()
+@requiere_permiso('editar_ordenes')
+def actualizar_materiales(id_orden):
+    """CU24 — Reemplaza los materiales asignados a una OT preservando consumo ya reportado."""
+    o = db.get_or_404(OrdenTrabajo, id_orden)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    consumos_prev = {
+        op.id_producto: (op.cantidad_usada, op.observacion)
+        for op in o.productos
+    }
+
+    OrdenProducto.query.filter_by(id_orden_trabajo=id_orden).delete()
+    for prod in data.get('productos', []):
+        id_prod = prod.get('id_producto')
+        cant    = prod.get('cantidad_asignada')
+        if not id_prod or not cant:
+            continue
+        cant_usada, obs = consumos_prev.get(int(id_prod), (None, None))
+        db.session.add(OrdenProducto(
+            id_orden_trabajo=id_orden,
+            id_producto=int(id_prod),
+            cantidad_asignada=cant,
+            cantidad_usada=cant_usada,
+            observacion=obs,
+        ))
+
+    db.session.commit()
+    log('ACTUALIZAR_MATERIALES_OT', f"Materiales actualizados en orden {o.codigo}",
+        id_usuario=id_usuario, modulo='ordenes')
+    return jsonify(_serializar(o, detalle=True))
+
+
 def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
     data = {
         'id': o.id,
@@ -206,8 +266,17 @@ def _serializar(o: OrdenTrabajo, detalle: bool = False) -> dict:
             for prod in Producto.query.filter(Producto.id.in_(prod_ids)).all():
                 prods_map[prod.id] = prod.nombre
 
+        emp_ids = [e.id_empleado for e in o.empleados]
+        emps_nombre = {}
+        if emp_ids:
+            for emp in Empleado.query.filter(Empleado.id.in_(emp_ids)).all():
+                emps_nombre[emp.id] = (emp.entidad.nombre if emp.entidad else None) or f'Empleado #{emp.id}'
         data['empleados'] = [
-            {'id_empleado': e.id_empleado, 'es_responsable': e.es_responsable}
+            {
+                'id_empleado': e.id_empleado,
+                'nombre_empleado': emps_nombre.get(e.id_empleado, f'Empleado #{e.id_empleado}'),
+                'es_responsable': e.es_responsable,
+            }
             for e in o.empleados
         ]
         data['productos'] = [

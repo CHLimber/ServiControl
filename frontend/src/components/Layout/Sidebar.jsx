@@ -21,20 +21,19 @@ const MENU = [
     items: [
       {
         id: 'clientes', icon: <Users size={16} />, label: 'Clientes',
-        paths: ['/entidades'],
+        paths: ['/clientes'],
         children: [
-          { to: '/entidades', icon: <List size={13} />, label: 'Lista de clientes' },
-          { to: '/entidades', icon: <Plus size={13} />, label: 'Nuevo cliente' },
-          { to: '/entidades', icon: <MapPin size={13} />, label: 'Establecimientos' },
-          { to: '/entidades', icon: <Settings size={13} />, label: 'Sistemas instalados' },
+          { to: '/clientes',                  icon: <List size={13} />,    label: 'Clientes' },
+          { to: '/clientes/establecimientos', icon: <MapPin size={13} />,  label: 'Establecimientos' },
+          { to: '/clientes/sistemas',         icon: <Settings size={13} />, label: 'Sistemas instalados' },
         ],
       },
       {
         id: 'cotizaciones', icon: <FileText size={16} />, label: 'Cotizaciones',
         paths: ['/cotizaciones'],
         children: [
-          { to: '/cotizaciones', icon: <List size={13} />, label: 'Lista de cotizaciones' },
-          { to: '/cotizaciones', icon: <Plus size={13} />, label: 'Nueva cotización' },
+          { to: '/cotizaciones',       icon: <List size={13} />, label: 'Lista de cotizaciones' },
+          { to: '/cotizaciones/nueva', icon: <Plus size={13} />, label: 'Nueva cotización' },
         ],
       },
     ],
@@ -46,24 +45,24 @@ const MENU = [
         id: 'proyectos', icon: <Building2 size={16} />, label: 'Proyectos',
         paths: ['/proyectos'],
         children: [
-          { to: '/proyectos', icon: <List size={13} />, label: 'Lista de proyectos' },
-          { to: '/proyectos', icon: <Plus size={13} />, label: 'Nuevo proyecto' },
+          { to: '/proyectos',       icon: <List size={13} />, label: 'Lista de proyectos' },
+          { to: '/proyectos/nuevo', icon: <Plus size={13} />, label: 'Nuevo proyecto' },
         ],
       },
       {
         id: 'ordenes', icon: <Wrench size={16} />, label: 'Órdenes de trabajo',
         paths: ['/ordenes'],
         children: [
-          { to: '/ordenes', icon: <List size={13} />, label: 'Lista de órdenes' },
-          { to: '/ordenes', icon: <Plus size={13} />, label: 'Nueva orden' },
+          { to: '/ordenes',       icon: <List size={13} />, label: 'Lista de órdenes' },
+          { to: '/ordenes/nueva', icon: <Plus size={13} />, label: 'Nueva orden' },
         ],
       },
       {
         id: 'mantenimiento', icon: <Hammer size={16} />, label: 'Mantenimiento',
         paths: ['/mantenimiento'],
         children: [
-          { to: '/mantenimiento', icon: <CalendarCheck size={13} />, label: 'Programados' },
-          { to: '/mantenimiento', icon: <AlertTriangle size={13} />, label: 'Alertas pendientes' },
+          { to: '/mantenimiento',         icon: <CalendarCheck size={13} />,  label: 'Programados' },
+          { to: '/mantenimiento/alertas', icon: <AlertTriangle size={13} />,  label: 'Alertas pendientes' },
         ],
       },
     ],
@@ -75,9 +74,9 @@ const MENU = [
         id: 'finanzas', icon: <Wallet size={16} />, label: 'Finanzas',
         paths: ['/finanzas'],
         children: [
-          { to: '/finanzas', icon: <DollarSign size={13} />, label: 'Registrar pago' },
-          { to: '/finanzas', icon: <List size={13} />, label: 'Cuentas por cobrar' },
-          { to: '/finanzas', icon: <BarChart3 size={13} />, label: 'Reporte financiero' },
+          { to: '/finanzas/pago',    icon: <DollarSign size={13} />, label: 'Registrar pago' },
+          { to: '/finanzas/cuentas', icon: <List size={13} />,       label: 'Cuentas por cobrar' },
+          { to: '/finanzas/reporte', icon: <BarChart3 size={13} />,  label: 'Reporte financiero' },
         ],
       },
     ],
@@ -89,9 +88,9 @@ const MENU = [
         id: 'bitacoras', icon: <BookOpen size={16} />, label: 'Bitácoras',
         paths: ['/bitacoras'],
         children: [
-          { to: '/bitacoras', icon: <List size={13} />, label: 'Por cliente' },
-          { to: '/bitacoras', icon: <List size={13} />, label: 'Por proyecto' },
-          { to: '/bitacoras', icon: <FolderOpen size={13} />, label: 'Documentos adjuntos' },
+          { to: '/bitacoras/cliente',    icon: <List size={13} />,      label: 'Por cliente' },
+          { to: '/bitacoras/proyecto',   icon: <List size={13} />,      label: 'Por proyecto' },
+          { to: '/bitacoras/documentos', icon: <FolderOpen size={13} />, label: 'Documentos adjuntos' },
         ],
       },
     ],
@@ -101,21 +100,21 @@ const MENU = [
     items: [
       {
         id: 'personal', icon: <UserCog size={16} />, label: 'Personal',
-        paths: ['/entidades', '/usuarios', '/roles'],
+        paths: ['/personal'],
         children: [
-          { to: '/entidades', icon: <List size={13} />, label: 'Empleados' },
-          { to: '/usuarios', icon: <Settings size={13} />, label: 'Usuarios y accesos' },
-          { to: '/roles',    icon: <ShieldCheck size={13} />, label: 'Roles y permisos' },
+          { to: '/personal/empleados', icon: <List size={13} />,        label: 'Empleados' },
+          { to: '/personal/usuarios',  icon: <Settings size={13} />,    label: 'Usuarios y accesos' },
+          { to: '/personal/roles',     icon: <ShieldCheck size={13} />, label: 'Roles y permisos' },
         ],
       },
       {
         id: 'catalogo', icon: <Package size={16} />, label: 'Catálogo',
         paths: ['/catalogo'],
         children: [
-          { to: '/catalogo', icon: <Box size={13} />, label: 'Productos' },
-          { to: '/catalogo', icon: <Tag size={13} />, label: 'Categorías' },
-          { to: '/catalogo', icon: <Truck size={13} />, label: 'Proveedores' },
-          { to: '/catalogo', icon: <List size={13} />, label: 'Servicios' },
+          { to: '/catalogo/productos',   icon: <Box size={13} />,   label: 'Productos' },
+          { to: '/catalogo/categorias',  icon: <Tag size={13} />,   label: 'Categorías' },
+          { to: '/catalogo/proveedores', icon: <Truck size={13} />, label: 'Proveedores' },
+          { to: '/catalogo/servicios',   icon: <List size={13} />,  label: 'Servicios' },
         ],
       },
     ],
@@ -128,9 +127,9 @@ const MENU = [
         id: 'auditoria', icon: <ClipboardList size={16} />, label: 'Auditoría',
         paths: ['/auditoria'],
         children: [
-          { to: '/auditoria', icon: <List size={13} />, label: 'Log del sistema' },
-          { to: '/auditoria', icon: <Download size={13} />, label: 'Exportar log' },
-          { to: '/auditoria', icon: <BarChart3 size={13} />, label: 'Reporte de actividad' },
+          { to: '/auditoria',          icon: <List size={13} />,      label: 'Log del sistema' },
+          { to: '/auditoria/exportar', icon: <Download size={13} />,  label: 'Exportar log' },
+          { to: '/auditoria/reporte',  icon: <BarChart3 size={13} />, label: 'Reporte de actividad' },
         ],
       },
     ],
@@ -141,7 +140,7 @@ function gruposActivosPorRuta(pathname) {
   const abiertos = {}
   MENU.forEach(sec => {
     sec.items?.forEach(item => {
-      if (item.paths?.includes(pathname)) {
+      if (item.paths?.some(p => pathname === p || pathname.startsWith(p + '/'))) {
         abiertos[item.id] = true
       }
     })
@@ -181,7 +180,7 @@ export default function Sidebar({ onClose }) {
   function renderItem(item) {
     if (item.children) {
       const estaAbierto = !!abiertos[item.id]
-      const tieneActivo = item.paths?.includes(location.pathname)
+      const tieneActivo = item.paths?.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
 
       return (
         <div key={item.id} className="nav-group">
@@ -200,7 +199,7 @@ export default function Sidebar({ onClose }) {
               <Link
                 key={`${child.to}-${idx}`}
                 to={child.to}
-                className={`nav-subitem${location.pathname === child.to && idx === 0 ? ' active' : ''}`}
+                className={`nav-subitem${location.pathname === child.to ? ' active' : ''}`}
                 onClick={handleNavClick}
               >
                 <span className="sub-icon">{child.icon}</span>

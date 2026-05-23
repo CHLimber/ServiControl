@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
 from ...models.entidades.entidad import Entidad, EntidadNatural, EntidadJuridica, Establecimiento, Sistema
-from ...models.catalogo.catalogo import Telefono
+from ...models.catalogo.catalogo import Telefono, Municipio, TipoEstablecimiento, TipoSistema
 from ...models.bitacoras.bitacora_doc import BitacoraCliente
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
@@ -197,6 +197,163 @@ def crear_sistema(id_entidad):
     return jsonify(_serializar_sistema(sistema)), 201
 
 
+# ── CRUD Establecimientos ────────────────────────────────────────
+
+@bp.get('/establecimientos')
+@jwt_required()
+@requiere_permiso('ver_clientes')
+def listar_establecimientos():
+    ests = (
+        Establecimiento.query
+        .filter_by(estado=True)
+        .order_by(Establecimiento.fecha_creacion.desc())
+        .all()
+    )
+    return jsonify([_serializar_establecimiento(e) for e in ests])
+
+
+@bp.post('/establecimientos')
+@jwt_required()
+@requiere_permiso('crear_clientes')
+def crear_establecimiento():
+    data = request.get_json()
+    usuario = get_jwt_identity()
+
+    if not data.get('id_entidad'):
+        return jsonify({'error': 'El cliente es requerido'}), 400
+    if not (data.get('direccion') or '').strip():
+        return jsonify({'error': 'La dirección es requerida'}), 400
+
+    entidad = db.get_or_404(Entidad, data['id_entidad'])
+    est = Establecimiento(
+        id_entidad=data['id_entidad'],
+        id_municipio=data.get('id_municipio') or None,
+        id_tipo_establecimiento=data.get('id_tipo_establecimiento') or None,
+        direccion=data['direccion'].strip(),
+    )
+    db.session.add(est)
+    db.session.commit()
+    log('CREAR_ESTABLECIMIENTO', f"Establecimiento creado para '{entidad.nombre}'",
+        id_usuario=int(usuario), modulo='entidades')
+    return jsonify(_serializar_establecimiento(est)), 201
+
+
+@bp.put('/establecimientos/<int:id_est>')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def actualizar_establecimiento(id_est):
+    est = db.get_or_404(Establecimiento, id_est)
+    data = request.get_json()
+    usuario = get_jwt_identity()
+
+    if data.get('id_entidad'):
+        est.id_entidad = data['id_entidad']
+    if 'id_municipio' in data:
+        est.id_municipio = data['id_municipio'] or None
+    if 'id_tipo_establecimiento' in data:
+        est.id_tipo_establecimiento = data['id_tipo_establecimiento'] or None
+    if data.get('direccion', '').strip():
+        est.direccion = data['direccion'].strip()
+
+    db.session.commit()
+    log('ACTUALIZAR_ESTABLECIMIENTO', f"Establecimiento {id_est} actualizado",
+        id_usuario=int(usuario), modulo='entidades')
+    return jsonify(_serializar_establecimiento(est))
+
+
+@bp.delete('/establecimientos/<int:id_est>')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def desactivar_establecimiento(id_est):
+    est = db.get_or_404(Establecimiento, id_est)
+    est.estado = False
+    db.session.commit()
+    log('DESACTIVAR_ESTABLECIMIENTO', f"Establecimiento {id_est} desactivado",
+        id_usuario=int(get_jwt_identity()), modulo='entidades')
+    return jsonify({'mensaje': 'Establecimiento desactivado'})
+
+
+# ── CRUD Sistemas ────────────────────────────────────────────────
+
+@bp.get('/sistemas')
+@jwt_required()
+@requiere_permiso('ver_clientes')
+def listar_sistemas_global():
+    sistemas = (
+        Sistema.query
+        .filter_by(estado=True)
+        .order_by(Sistema.fecha_creacion.desc())
+        .all()
+    )
+    return jsonify([_serializar_sistema(s) for s in sistemas])
+
+
+@bp.post('/sistemas')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def crear_sistema_global():
+    data = request.get_json()
+    usuario = get_jwt_identity()
+
+    if not data.get('id_establecimiento'):
+        return jsonify({'error': 'El establecimiento es requerido'}), 400
+    if not data.get('id_tipo_sistema'):
+        return jsonify({'error': 'El tipo de sistema es requerido'}), 400
+    if not (data.get('nombre') or '').strip():
+        return jsonify({'error': 'El nombre del sistema es requerido'}), 400
+
+    db.get_or_404(Establecimiento, data['id_establecimiento'])
+    sistema = Sistema(
+        id_establecimiento=data['id_establecimiento'],
+        id_tipo_sistema=data['id_tipo_sistema'],
+        nombre=data['nombre'].strip(),
+        tiene_mantenimiento=data.get('tiene_mantenimiento', False),
+        periodicidad_dias=data.get('periodicidad_dias') or None,
+    )
+    db.session.add(sistema)
+    db.session.commit()
+    log('CREAR_SISTEMA', f"Sistema '{sistema.nombre}' creado",
+        id_usuario=int(usuario), modulo='entidades')
+    return jsonify(_serializar_sistema(sistema)), 201
+
+
+@bp.put('/sistemas/<int:id_sis>')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def actualizar_sistema(id_sis):
+    sistema = db.get_or_404(Sistema, id_sis)
+    data = request.get_json()
+    usuario = get_jwt_identity()
+
+    if data.get('id_establecimiento'):
+        sistema.id_establecimiento = data['id_establecimiento']
+    if data.get('id_tipo_sistema'):
+        sistema.id_tipo_sistema = data['id_tipo_sistema']
+    if (data.get('nombre') or '').strip():
+        sistema.nombre = data['nombre'].strip()
+    if 'tiene_mantenimiento' in data:
+        sistema.tiene_mantenimiento = data['tiene_mantenimiento']
+    if 'periodicidad_dias' in data:
+        sistema.periodicidad_dias = data['periodicidad_dias'] or None
+
+    db.session.commit()
+    log('ACTUALIZAR_SISTEMA', f"Sistema {id_sis} actualizado",
+        id_usuario=int(usuario), modulo='entidades')
+    return jsonify(_serializar_sistema(sistema))
+
+
+@bp.delete('/sistemas/<int:id_sis>')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def desactivar_sistema(id_sis):
+    sistema = db.get_or_404(Sistema, id_sis)
+    sistema.estado = False
+    db.session.commit()
+    log('DESACTIVAR_SISTEMA', f"Sistema {id_sis} desactivado",
+        id_usuario=int(get_jwt_identity()), modulo='entidades')
+    return jsonify({'mensaje': 'Sistema desactivado'})
+
+
 # ── CU28: Bitácora de cliente ─────────────────────────────────────
 
 @bp.get('/<int:id_entidad>/bitacora')
@@ -251,14 +408,41 @@ def _serializar_nota(n: BitacoraCliente) -> dict:
     }
 
 
+def _serializar_establecimiento(est: Establecimiento) -> dict:
+    municipio = db.session.get(Municipio, est.id_municipio) if est.id_municipio else None
+    tipo = db.session.get(TipoEstablecimiento, est.id_tipo_establecimiento) if est.id_tipo_establecimiento else None
+    entidad = db.session.get(Entidad, est.id_entidad) if est.id_entidad else None
+    return {
+        'id': est.id,
+        'id_entidad': est.id_entidad,
+        'nombre_cliente': entidad.nombre if entidad else '—',
+        'id_municipio': est.id_municipio,
+        'nombre_municipio': municipio.nombre if municipio else None,
+        'id_tipo_establecimiento': est.id_tipo_establecimiento,
+        'nombre_tipo': tipo.nombre if tipo else None,
+        'direccion': est.direccion,
+        'estado': est.estado,
+        'fecha_creacion': est.fecha_creacion.isoformat() if est.fecha_creacion else None,
+    }
+
+
 def _serializar_sistema(s: Sistema) -> dict:
+    est = db.session.get(Establecimiento, s.id_establecimiento) if s.id_establecimiento else None
+    entidad = db.session.get(Entidad, est.id_entidad) if est else None
+    tipo = db.session.get(TipoSistema, s.id_tipo_sistema) if s.id_tipo_sistema else None
     return {
         'id': s.id,
         'nombre': s.nombre,
         'id_establecimiento': s.id_establecimiento,
+        'direccion_establecimiento': est.direccion if est else None,
+        'id_entidad': est.id_entidad if est else None,
+        'nombre_cliente': entidad.nombre if entidad else '—',
         'id_tipo_sistema': s.id_tipo_sistema,
+        'nombre_tipo_sistema': tipo.nombre if tipo else None,
         'tiene_mantenimiento': s.tiene_mantenimiento,
         'periodicidad_dias': s.periodicidad_dias,
+        'estado': s.estado,
+        'fecha_creacion': s.fecha_creacion.isoformat() if s.fecha_creacion else None,
     }
 
 

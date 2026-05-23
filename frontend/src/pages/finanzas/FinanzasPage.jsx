@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { proyectosApi } from '../../api/proyectos'
 import { ordenesApi } from '../../api/ordenes'
 import client from '../../api/client'
@@ -35,7 +36,17 @@ const FORM_PAGO_VACIO   = { id_proyecto: '', tipo_pago: 'anticipo', monto: '', f
 const FORM_GASTO_VACIO  = { id_orden: '', concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' }
 
 export default function FinanzasPage() {
-  const [tab, setTab]             = useState('pagos')  // 'pagos' | 'gastos' | 'cuentas'
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const tab = location.pathname === '/finanzas/cuentas' ? 'cuentas'
+            : location.pathname === '/finanzas/gastos'  ? 'gastos'
+            : 'pagos'
+
+  function setTab(key) {
+    navigate(key === 'cuentas' ? '/finanzas/cuentas' : key === 'gastos' ? '/finanzas/gastos' : '/finanzas/pago')
+  }
+
   const [pagos, setPagos]         = useState([])
   const [gastos, setGastos]       = useState([])
   const [cuentas, setCuentas]     = useState([])
@@ -133,7 +144,11 @@ export default function FinanzasPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Finanzas</h1>
-          <p className="page-subtitle">Pagos, gastos y cuentas por cobrar</p>
+          <p className="page-subtitle">
+            {tab === 'cuentas' ? 'Cuentas por cobrar — saldos pendientes por proyecto'
+           : tab === 'gastos'  ? 'Gastos — egresos registrados por orden de trabajo'
+           : 'Pagos — ingresos registrados por proyecto'}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost" onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
