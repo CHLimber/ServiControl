@@ -3,7 +3,7 @@ import { proyectosApi } from '../../api/proyectos'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { cotizacionesApi } from '../../api/cotizaciones'
-import { Eye, RefreshCw, X } from 'lucide-react'
+import { Eye, RefreshCw, X, Paperclip, ExternalLink, Trash2 } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Planificación':  'badge-gray',
@@ -53,6 +53,15 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [obsEstado, setObsEstado]     = useState('')
 
+  // Documentos (CU30)
+  const [tabDetalle, setTabDetalle]           = useState('historial')
+  const [documentos, setDocumentos]           = useState([])
+  const [modalAdjuntar, setModalAdjuntar]     = useState(false)
+  const [tiposDoc, setTiposDoc]               = useState([])
+  const [formDoc, setFormDoc]                 = useState({ nombre: '', id_tipo_documento: '', ruta: '', descripcion: '' })
+  const [guardandoDoc, setGuardandoDoc]       = useState(false)
+  const [errDoc, setErrDoc]                   = useState('')
+
   useEffect(() => {
     cargarProyectos()
     if (abrirCrearInicial) setModalCrear(true)
@@ -72,14 +81,62 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
   // CU21 — abre el modal con historial completo
   async function abrirDetalle(p) {
     setDetalle({ ...p, historial: null })
+    setTabDetalle('historial')
+    setDocumentos([])
     setCargandoDetalle(true)
     try {
-      const full = await proyectosApi.obtener(p.id)
+      const [full, docs] = await Promise.all([
+        proyectosApi.obtener(p.id),
+        proyectosApi.listarDocumentos(p.id),
+      ])
       setDetalle(full)
+      setDocumentos(docs)
     } catch {
       // muestra lo que ya tenemos
     } finally {
       setCargandoDetalle(false)
+    }
+  }
+
+  async function abrirAdjuntar() {
+    setFormDoc({ nombre: '', id_tipo_documento: '', ruta: '', descripcion: '' })
+    setErrDoc('')
+    setModalAdjuntar(true)
+    if (tiposDoc.length === 0) {
+      try {
+        const tipos = await catalogosApi.tiposDocumento()
+        setTiposDoc(tipos)
+      } catch {
+        setTiposDoc([])
+      }
+    }
+  }
+
+  async function guardarDocumento(e) {
+    e.preventDefault()
+    if (!formDoc.nombre.trim()) { setErrDoc('El nombre es requerido.'); return }
+    if (!formDoc.ruta.trim()) { setErrDoc('La URL o ruta es requerida.'); return }
+    if (!formDoc.id_tipo_documento) { setErrDoc('Selecciona el tipo de documento.'); return }
+    setGuardandoDoc(true)
+    setErrDoc('')
+    try {
+      const doc = await proyectosApi.subirDocumento(detalle.id, formDoc)
+      setDocumentos(prev => [doc, ...prev])
+      setModalAdjuntar(false)
+    } catch (err) {
+      setErrDoc(err.error || 'Error al adjuntar el documento.')
+    } finally {
+      setGuardandoDoc(false)
+    }
+  }
+
+  async function eliminarDocumento(doc) {
+    if (!confirm(`¿Eliminar el documento "${doc.nombre}"?`)) return
+    try {
+      await proyectosApi.eliminarDocumento(detalle.id, doc.id)
+      setDocumentos(prev => prev.filter(d => d.id !== doc.id))
+    } catch {
+      alert('No se pudo eliminar el documento.')
     }
   }
 
@@ -246,10 +303,10 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
         </div>
       </div>
 
-      {/* ── Modal detalle + historial (CU21) ── */}
+      {/* ── Modal detalle + historial + documentos (CU21 / CU30) ── */}
       {detalle && (
         <div className="modal-overlay" onClick={() => setDetalle(null)}>
-          <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 660 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h2 className="modal-title">{detalle.titulo}</h2>
@@ -282,50 +339,124 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
                 </div>
               </div>
 
-              {/* Historial de estados */}
-              <div style={{ fontWeight: 600, marginBottom: 10 }}>Historial de estados</div>
-              {cargandoDetalle ? (
-                <div className="text-muted text-sm">Cargando historial...</div>
-              ) : !detalle.historial || detalle.historial.length === 0 ? (
-                <div className="text-muted text-sm">Sin historial registrado.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {detalle.historial.map((h, i) => (
-                    <div key={i} style={{
-                      display: 'flex', gap: 12, paddingBottom: 12,
-                      borderLeft: '2px solid var(--accent)', paddingLeft: 14, position: 'relative',
+              {/* Pestañas */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 16, gap: 0 }}>
+                {[['historial', 'Historial'], ['documentos', 'Documentos']].map(([tab, label]) => (
+                  <button key={tab} onClick={() => setTabDetalle(tab)}
+                    className="btn btn-ghost btn-sm"
+                    style={{
+                      borderRadius: 0, borderBottom: tabDetalle === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                      fontWeight: tabDetalle === tab ? 600 : 400, color: tabDetalle === tab ? 'var(--accent)' : 'var(--text-muted)',
+                      paddingBottom: 8,
                     }}>
-                      <div style={{
-                        width: 10, height: 10, borderRadius: '50%',
-                        background: 'var(--accent)', position: 'absolute', left: -6, top: 4, flexShrink: 0,
-                      }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          {h.estado_anterior && (
-                            <>
-                              <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_anterior] || 'badge-gray'}`}
-                                style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
-                                {h.estado_anterior}
-                              </span>
-                              <span className="text-muted" style={{ fontSize: 12 }}>→</span>
-                            </>
-                          )}
-                          <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_nuevo] || 'badge-gray'}`}
-                            style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
-                            {h.estado_nuevo}
-                          </span>
-                        </div>
-                        <div className="text-muted text-sm" style={{ marginTop: 2 }}>
-                          {formatFechaHora(h.fecha_cambio)}
-                        </div>
-                        {h.observacion && (
-                          <div className="text-sm" style={{ marginTop: 2, fontStyle: 'italic' }}>
-                            "{h.observacion}"
+                    {label}
+                    {tab === 'documentos' && documentos.length > 0 && (
+                      <span style={{ marginLeft: 6, background: 'var(--accent)', color: '#fff',
+                        borderRadius: 10, fontSize: 10, padding: '1px 6px' }}>
+                        {documentos.length}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab: Historial de estados */}
+              {tabDetalle === 'historial' && (
+                cargandoDetalle ? (
+                  <div className="text-muted text-sm">Cargando historial...</div>
+                ) : !detalle.historial || detalle.historial.length === 0 ? (
+                  <div className="text-muted text-sm">Sin historial registrado.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {detalle.historial.map((h, i) => (
+                      <div key={i} style={{
+                        display: 'flex', gap: 12, paddingBottom: 12,
+                        borderLeft: '2px solid var(--accent)', paddingLeft: 14, position: 'relative',
+                      }}>
+                        <div style={{
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: 'var(--accent)', position: 'absolute', left: -6, top: 4, flexShrink: 0,
+                        }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {h.estado_anterior && (
+                              <>
+                                <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_anterior] || 'badge-gray'}`}
+                                  style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                                  {h.estado_anterior}
+                                </span>
+                                <span className="text-muted" style={{ fontSize: 12 }}>→</span>
+                              </>
+                            )}
+                            <span className={`badge badge-sm ${BADGE_ESTADO[h.estado_nuevo] || 'badge-gray'}`}
+                              style={{ fontSize: '0.7rem', padding: '2px 7px' }}>
+                              {h.estado_nuevo}
+                            </span>
                           </div>
-                        )}
+                          <div className="text-muted text-sm" style={{ marginTop: 2 }}>
+                            {formatFechaHora(h.fecha_cambio)}
+                          </div>
+                          {h.observacion && (
+                            <div className="text-sm" style={{ marginTop: 2, fontStyle: 'italic' }}>
+                              "{h.observacion}"
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                )
+              )}
+
+              {/* Tab: Documentos (CU30) */}
+              {tabDetalle === 'documentos' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                    <button className="btn btn-primary btn-sm" onClick={abrirAdjuntar}>
+                      <Paperclip size={13} style={{ marginRight: 5 }} />
+                      Adjuntar documento
+                    </button>
+                  </div>
+                  {cargandoDetalle ? (
+                    <div className="text-muted text-sm">Cargando documentos...</div>
+                  ) : documentos.length === 0 ? (
+                    <div className="empty-state" style={{ padding: '24px 0' }}>
+                      Sin documentos adjuntos.
                     </div>
-                  ))}
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {documentos.map(doc => (
+                        <div key={doc.id} style={{
+                          border: '1px solid var(--border)', borderRadius: 8,
+                          padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start',
+                        }}>
+                          <Paperclip size={16} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 500, fontSize: 14 }}>{doc.nombre}</div>
+                            <div className="text-muted text-sm">
+                              {doc.tipo_documento} · {doc.usuario} · {formatFecha(doc.fecha_subida)}
+                            </div>
+                            {doc.descripcion && (
+                              <div className="text-sm" style={{ marginTop: 2, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                {doc.descripcion}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                            <a href={doc.ruta} target="_blank" rel="noopener noreferrer"
+                              className="btn btn-ghost btn-sm" title="Abrir documento">
+                              <ExternalLink size={13} />
+                            </a>
+                            <button className="btn btn-ghost btn-sm" title="Eliminar"
+                              style={{ color: 'var(--danger)' }}
+                              onClick={() => eliminarDocumento(doc)}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -335,6 +466,58 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
                 Cambiar estado
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal adjuntar documento (CU30) ── */}
+      {modalAdjuntar && detalle && (
+        <div className="modal-overlay" onClick={() => setModalAdjuntar(false)}>
+          <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Adjuntar documento</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalAdjuntar(false)}><X size={14} /></button>
+            </div>
+            <form onSubmit={guardarDocumento}>
+              <div className="modal-body">
+                <p className="text-sm text-muted" style={{ marginBottom: 16 }}>
+                  Proyecto: <strong>{detalle.titulo}</strong>
+                </p>
+                <div className="form-group">
+                  <label className="form-label">Nombre del documento *</label>
+                  <input className="input" value={formDoc.nombre} maxLength={255}
+                    onChange={e => setFormDoc(f => ({ ...f, nombre: e.target.value }))}
+                    placeholder="Ej: Contrato firmado, Plano eléctrico..." />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tipo de documento *</label>
+                  <select className="input" value={formDoc.id_tipo_documento}
+                    onChange={e => setFormDoc(f => ({ ...f, id_tipo_documento: Number(e.target.value) || '' }))}>
+                    <option value="">Seleccioná</option>
+                    {tiposDoc.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">URL o ruta del archivo *</label>
+                  <input className="input" value={formDoc.ruta} maxLength={500}
+                    onChange={e => setFormDoc(f => ({ ...f, ruta: e.target.value }))}
+                    placeholder="https://drive.google.com/... o ruta de servidor" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Descripción (opcional)</label>
+                  <textarea className="input" rows={2} value={formDoc.descripcion}
+                    onChange={e => setFormDoc(f => ({ ...f, descripcion: e.target.value }))}
+                    placeholder="Observaciones sobre el documento..." />
+                </div>
+                {errDoc && <div className="alert alert-danger" style={{ marginTop: 8 }}>{errDoc}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setModalAdjuntar(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={guardandoDoc}>
+                  {guardandoDoc ? 'Guardando...' : 'Adjuntar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -84,7 +84,8 @@ def actualizar(id_producto):
         p.id_categoria = data['id_categoria']
 
     db.session.commit()
-    log('ACTUALIZAR_PRODUCTO', f"Producto {id_producto} actualizado", id_usuario=int(usuario), modulo='productos')
+    log('ACTUALIZAR_PRODUCTO', f"Producto '{p.nombre}' (cod:{p.codigo}) actualizado",
+        id_usuario=int(usuario), modulo='productos')
     return jsonify(_serializar(p))
 
 
@@ -93,10 +94,12 @@ def actualizar(id_producto):
 @requiere_permiso('gestionar_catalogo')
 def desactivar(id_producto):
     p = db.get_or_404(Producto, id_producto)
+    nombre = p.nombre
     p.estado = False
     db.session.commit()
     usuario = get_jwt_identity()
-    log('DESACTIVAR_PRODUCTO', f"Producto {id_producto} desactivado", id_usuario=int(usuario), modulo='productos')
+    log('DESACTIVAR_PRODUCTO', f"Producto '{nombre}' (id:{id_producto}) desactivado",
+        id_usuario=int(usuario), modulo='productos')
     return jsonify({'mensaje': 'Producto desactivado'})
 
 

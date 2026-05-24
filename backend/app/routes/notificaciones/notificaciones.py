@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, abort
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
 from ...models.notificaciones.notificacion import Notificacion
+from ...utils.bitacora import log
 
 bp = Blueprint('notificaciones', __name__)
 
@@ -29,8 +30,11 @@ def no_leidas():
 @jwt_required()
 def marcar_todas_leidas():
     id_usuario = int(get_jwt_identity())
-    Notificacion.query.filter_by(id_usuario=id_usuario, leida=False).update({'leida': True})
+    cantidad = Notificacion.query.filter_by(id_usuario=id_usuario, leida=False).update({'leida': True})
     db.session.commit()
+    if cantidad:
+        log('NOTIFICACIONES_LEER_TODAS', f"{cantidad} notificación(es) marcada(s) como leídas",
+            id_usuario=id_usuario, modulo='notificaciones')
     return jsonify({'mensaje': 'Todas las notificaciones marcadas como leídas'})
 
 
@@ -43,6 +47,8 @@ def marcar_leida(id_notificacion):
         abort(403)
     n.leida = True
     db.session.commit()
+    log('NOTIFICACION_LEER', f"Notificación #{id_notificacion} '{n.titulo}' marcada como leída",
+        id_usuario=id_usuario, modulo='notificaciones')
     return jsonify({'mensaje': 'Notificación marcada como leída'})
 
 
@@ -53,8 +59,11 @@ def eliminar(id_notificacion):
     n = db.get_or_404(Notificacion, id_notificacion)
     if n.id_usuario != id_usuario:
         abort(403)
+    titulo = n.titulo
     db.session.delete(n)
     db.session.commit()
+    log('ELIMINAR_NOTIFICACION', f"Notificación #{id_notificacion} '{titulo}' eliminada",
+        id_usuario=id_usuario, modulo='notificaciones')
     return jsonify({'mensaje': 'Notificación eliminada'})
 
 

@@ -108,8 +108,14 @@ def actualizar(id_usuario):
         u.password = generate_password_hash(data['password'])
         cambio_password = True
 
+    campos_editados = [c for c in ('username', 'email', 'id_rol') if c in data]
+    if cambio_password:
+        campos_editados.append('password')
+
     db.session.commit()
-    log('ACTUALIZAR_USUARIO', f"Usuario '{u.username}' actualizado", id_usuario=int(id_solicitante), modulo='usuarios')
+    detalle_cambios = ', '.join(campos_editados) if campos_editados else 'sin cambios detectados'
+    log('ACTUALIZAR_USUARIO', f"Usuario '{u.username}' actualizado — campos: {detalle_cambios}",
+        id_usuario=int(id_solicitante), modulo='usuarios')
     if cambio_password:
         correo.notificar_cambio_password(u.email, u.username)
     return jsonify(_serializar(u))

@@ -34,6 +34,7 @@ class Servicio(db.Model):
     nombre = db.Column(db.String(150), nullable=False)
     descripcion = db.Column(db.Text)
     precio = db.Column(db.Numeric(12, 2), nullable=False)
+    estado = db.Column(db.Boolean, default=True, nullable=False)
 
 
 class Categoria(db.Model):

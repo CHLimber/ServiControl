@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime
 
 
@@ -8,8 +9,9 @@ def log(accion: str, descripcion: str, usuario: str = None,
     detalles: lista de dicts con claves 'campo', 'anterior', 'nuevo'
     """
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    quien = f"'{usuario}'" if usuario else 'sistema'
-    print(f"[BITÁCORA] {accion} | {descripcion} | por {quien} | {timestamp}")
+    quien = usuario if usuario else (f'id:{id_usuario}' if id_usuario else 'sistema')
+    mod   = f'[{modulo}]' if modulo else '[---]'
+    print(f"[BITÁCORA] {timestamp} {mod} {accion} | {quien} | {descripcion}", flush=True)
 
     try:
         from flask import has_request_context, request as flask_request
@@ -38,5 +40,10 @@ def log(accion: str, descripcion: str, usuario: str = None,
                 ))
 
         db.session.commit()
-    except Exception:
-        db.session.rollback()
+    except Exception as e:
+        print(f"[BITÁCORA] ERROR al guardar en BD: {e}", file=sys.stderr, flush=True)
+        try:
+            from ..extensions import db
+            db.session.rollback()
+        except Exception:
+            pass

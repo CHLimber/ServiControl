@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { ordenesApi } from '../../api/ordenes'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
-import { Eye, RefreshCw, Pencil, Star, Users, Package, X, Check } from 'lucide-react'
+import { finanzasApi } from '../../api/finanzas'
+import { Eye, RefreshCw, Pencil, Star, Users, Package, X, Check, DollarSign, Trash2, Plus } from 'lucide-react'
 
 const BADGE_ESTADO = {
   'Pendiente':   'badge-gray',
@@ -66,6 +67,14 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [obsEstado, setObsEstado]   = useState('')
 
+  // Gastos de la orden (CU26)
+  const [gastos, setGastos]             = useState([])
+  const [totalGastos, setTotalGastos]   = useState(0)
+  const [formGasto, setFormGasto]       = useState({ concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' })
+  const [mostrarFormGasto, setMostrarFormGasto] = useState(false)
+  const [guardandoGasto, setGuardandoGasto]     = useState(false)
+  const [errGasto, setErrGasto]                 = useState('')
+
   useEffect(() => {
     cargarOrdenes()
     if (abrirCrearInicial) setModalCrear(true)
@@ -82,14 +91,22 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
     }
   }
 
-  // CU27 — abre detalle con historial completo; también carga productos para CU25
+  // CU27 — abre detalle con historial completo; también carga productos para CU25 y gastos para CU26
   async function abrirDetalle(o) {
     setDetalle({ ...o, historial: null, productos: null })
     setModoConsumo(false)
+    setGastos([])
+    setTotalGastos(0)
+    setMostrarFormGasto(false)
     setCargandoDetalle(true)
     try {
-      const full = await ordenesApi.obtener(o.id)
+      const [full, gastosData] = await Promise.all([
+        ordenesApi.obtener(o.id),
+        finanzasApi.gastosPorOrden(o.id),
+      ])
       setDetalle(full)
+      setGastos(gastosData.gastos || [])
+      setTotalGastos(gastosData.total || 0)
       setConsumos((full.productos || []).map(p => ({
         id_producto: p.id_producto,
         cantidad_usada: p.cantidad_usada ?? '',
@@ -109,6 +126,39 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
     if (estados.length === 0) {
       const ests = await ordenesApi.estados()
       setEstados(ests)
+    }
+  }
+
+  // CU26 — registrar gasto de la orden
+  async function registrarGasto(e) {
+    e.preventDefault()
+    if (!formGasto.monto || !formGasto.fecha_gasto) {
+      setErrGasto('Monto y fecha son obligatorios.')
+      return
+    }
+    setGuardandoGasto(true)
+    setErrGasto('')
+    try {
+      const nuevo = await finanzasApi.registrarGasto({ ...formGasto, id_orden: detalle.id, monto: Number(formGasto.monto) })
+      setGastos(prev => [nuevo, ...prev])
+      setTotalGastos(prev => prev + nuevo.monto)
+      setFormGasto({ concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' })
+      setMostrarFormGasto(false)
+    } catch (err) {
+      setErrGasto(err.error || 'Error al registrar el gasto.')
+    } finally {
+      setGuardandoGasto(false)
+    }
+  }
+
+  async function eliminarGasto(g) {
+    if (!confirm(`¿Eliminar el gasto "${g.concepto}" de Bs ${g.monto}?`)) return
+    try {
+      await finanzasApi.eliminarGasto(g.id)
+      setGastos(prev => prev.filter(x => x.id !== g.id))
+      setTotalGastos(prev => prev - g.monto)
+    } catch {
+      alert('No se pudo eliminar el gasto.')
     }
   }
 
@@ -519,6 +569,92 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                     </table>
                   </div>
                 </>
+              )}
+
+              {/* CU26 — Gastos de la orden */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 8 }}>
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <DollarSign size={15} /> Gastos
+                  {gastos.length > 0 && (
+                    <span className="text-muted text-sm" style={{ fontWeight: 400 }}>
+                      — Total: <strong style={{ color: 'var(--danger)' }}>Bs {Number(totalGastos).toFixed(2)}</strong>
+                    </span>
+                  )}
+                </div>
+                <button className="btn btn-ghost btn-sm"
+                  onClick={() => { setMostrarFormGasto(v => !v); setErrGasto('') }}>
+                  {mostrarFormGasto ? 'Cancelar' : <><Plus size={13} style={{ marginRight: 4 }} />Agregar gasto</>}
+                </button>
+              </div>
+
+              {mostrarFormGasto && (
+                <form onSubmit={registrarGasto} style={{
+                  background: 'var(--bg)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: 14, marginBottom: 12,
+                }}>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label className="form-label">Concepto *</label>
+                      <select className="input" value={formGasto.concepto}
+                        onChange={e => setFormGasto(f => ({ ...f, concepto: e.target.value }))}>
+                        {['materiales', 'viaticos', 'transporte', 'otro'].map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Monto (Bs) *</label>
+                      <input type="number" className="input" min="0.01" step="0.01"
+                        value={formGasto.monto}
+                        onChange={e => setFormGasto(f => ({ ...f, monto: e.target.value }))}
+                        placeholder="0.00" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Fecha *</label>
+                      <input type="date" className="input" value={formGasto.fecha_gasto}
+                        onChange={e => setFormGasto(f => ({ ...f, fecha_gasto: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Descripción</label>
+                      <input className="input" value={formGasto.descripcion}
+                        onChange={e => setFormGasto(f => ({ ...f, descripcion: e.target.value }))}
+                        placeholder="Detalle del gasto..." />
+                    </div>
+                  </div>
+                  {errGasto && <div className="alert alert-danger" style={{ marginTop: 8 }}>{errGasto}</div>}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={guardandoGasto}>
+                      {guardandoGasto ? 'Guardando...' : 'Registrar gasto'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {cargandoDetalle ? (
+                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Cargando gastos...</div>
+              ) : gastos.length === 0 ? (
+                <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Sin gastos registrados para esta OT.</div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  {gastos.map(g => (
+                    <div key={g.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '7px 0', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <span className="badge badge-yellow" style={{ flexShrink: 0 }}>{g.concepto}</span>
+                      <span style={{ fontWeight: 600, flexShrink: 0 }}>Bs {Number(g.monto).toFixed(2)}</span>
+                      <span className="text-muted text-sm" style={{ flex: 1 }}>
+                        {g.descripcion || '—'} · {new Date(g.fecha_gasto).toLocaleDateString('es-BO')}
+                      </span>
+                      <span className="text-muted text-sm" style={{ flexShrink: 0 }}>{g.usuario}</span>
+                      <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
+                        style={{ color: 'var(--danger)', flexShrink: 0 }}
+                        onClick={() => eliminarGasto(g)}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
 
               {/* CU27 — Historial de estados */}

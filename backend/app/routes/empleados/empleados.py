@@ -221,7 +221,7 @@ def actualizar(id_emp):
         _set_telefonos(ent.id, data['telefonos'])
 
     db.session.commit()
-    log('ACTUALIZAR_EMPLEADO', f"Empleado {id_emp} actualizado",
+    log('ACTUALIZAR_EMPLEADO', f"Empleado '{ent.nombre}' (id:{id_emp}) actualizado",
         id_usuario=id_usuario, modulo='empleados')
     return jsonify(_serializar(emp))
 
@@ -240,6 +240,6 @@ def desactivar(id_emp):
     emp.entidad.estado = False
     db.session.commit()
     id_usuario = int(get_jwt_identity())
-    log('DESACTIVAR_EMPLEADO', f"Empleado {id_emp} desactivado",
+    log('DESACTIVAR_EMPLEADO', f"Empleado '{emp.entidad.nombre}' (id:{id_emp}) desactivado",
         id_usuario=id_usuario, modulo='empleados')
     return jsonify({'mensaje': 'Empleado desactivado'})

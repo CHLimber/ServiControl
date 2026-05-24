@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import text
 from ...extensions import db
 from ...models.entidades.entidad import Entidad, EntidadNatural, EntidadJuridica, Establecimiento, Sistema
 from ...models.catalogo.catalogo import Telefono, Municipio, TipoEstablecimiento, TipoSistema
@@ -8,6 +9,49 @@ from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
 
 bp = Blueprint('entidades', __name__)
+
+
+# ── Helpers teléfonos ────────────────────────────────────────────
+
+def _get_telefonos_entidad(id_entidad):
+    rows = db.session.execute(
+        text("SELECT t.numero FROM telefono t "
+             "JOIN telefono_entidad te ON te.id_telefono = t.id "
+             "WHERE te.id_entidad = :id"),
+        {'id': id_entidad},
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _set_telefonos_entidad(id_entidad, numeros):
+    existing = db.session.execute(
+        text("SELECT id_telefono FROM telefono_entidad WHERE id_entidad = :id"),
+        {'id': id_entidad},
+    ).fetchall()
+    old_ids = [r[0] for r in existing]
+    db.session.execute(
+        text("DELETE FROM telefono_entidad WHERE id_entidad = :id"),
+        {'id': id_entidad},
+    )
+    db.session.flush()
+    for tid in old_ids:
+        en_proveedor = db.session.execute(
+            text("SELECT COUNT(*) FROM telefono_proveedor WHERE id_telefono = :id"),
+            {'id': tid},
+        ).scalar()
+        if not en_proveedor:
+            db.session.execute(text("DELETE FROM telefono WHERE id = :id"), {'id': tid})
+    db.session.flush()
+    for numero in numeros:
+        numero = (numero or '').strip()
+        if numero:
+            tel = Telefono(numero=numero)
+            db.session.add(tel)
+            db.session.flush()
+            db.session.execute(
+                text("INSERT INTO telefono_entidad (id_telefono, id_entidad) VALUES (:tid, :eid)"),
+                {'tid': tel.id, 'eid': id_entidad},
+            )
 
 
 @bp.get('/')
@@ -76,6 +120,9 @@ def crear():
         db.session.add(juridica)
 
     id_usuario = int(usuario)
+    db.session.flush()
+    if data.get('telefonos'):
+        _set_telefonos_entidad(entidad.id, data['telefonos'])
     db.session.commit()
     log('CREAR_ENTIDAD', f"Entidad '{entidad.nombre}' ({tipo}) creada", id_usuario=id_usuario, modulo='entidades')
     return jsonify(_serializar(entidad)), 201
@@ -124,8 +171,11 @@ def actualizar(id_entidad):
                     return jsonify({'error': 'Ya existe una entidad con ese NIT'}), 409
             entidad.juridica.nit = nit_nuevo
 
+    if 'telefonos' in data:
+        _set_telefonos_entidad(id_entidad, data['telefonos'])
     db.session.commit()
-    log('ACTUALIZAR_ENTIDAD', f"Entidad {id_entidad} actualizada", id_usuario=int(usuario), modulo='entidades')
+    log('ACTUALIZAR_ENTIDAD', f"Entidad '{entidad.nombre}' (id:{id_entidad}) actualizada",
+        id_usuario=int(usuario), modulo='entidades')
     return jsonify(_serializar(entidad))
 
 
@@ -134,10 +184,12 @@ def actualizar(id_entidad):
 @requiere_permiso('editar_clientes')
 def desactivar(id_entidad):
     entidad = db.get_or_404(Entidad, id_entidad)
+    nombre = entidad.nombre
     entidad.estado = False
     db.session.commit()
     usuario = get_jwt_identity()
-    log('DESACTIVAR_ENTIDAD', f"Entidad {id_entidad} desactivada", id_usuario=int(usuario), modulo='entidades')
+    log('DESACTIVAR_ENTIDAD', f"Entidad '{nombre}' (id:{id_entidad}) desactivada",
+        id_usuario=int(usuario), modulo='entidades')
     return jsonify({'mensaje': 'Entidad desactivada'})
 
 
@@ -256,7 +308,7 @@ def actualizar_establecimiento(id_est):
         est.direccion = data['direccion'].strip()
 
     db.session.commit()
-    log('ACTUALIZAR_ESTABLECIMIENTO', f"Establecimiento {id_est} actualizado",
+    log('ACTUALIZAR_ESTABLECIMIENTO', f"Establecimiento '{est.direccion or id_est}' (id:{id_est}) actualizado",
         id_usuario=int(usuario), modulo='entidades')
     return jsonify(_serializar_establecimiento(est))
 
@@ -266,9 +318,10 @@ def actualizar_establecimiento(id_est):
 @requiere_permiso('editar_clientes')
 def desactivar_establecimiento(id_est):
     est = db.get_or_404(Establecimiento, id_est)
+    direccion = est.direccion or f'id:{id_est}'
     est.estado = False
     db.session.commit()
-    log('DESACTIVAR_ESTABLECIMIENTO', f"Establecimiento {id_est} desactivado",
+    log('DESACTIVAR_ESTABLECIMIENTO', f"Establecimiento '{direccion}' (id:{id_est}) desactivado",
         id_usuario=int(get_jwt_identity()), modulo='entidades')
     return jsonify({'mensaje': 'Establecimiento desactivado'})
 
@@ -337,7 +390,7 @@ def actualizar_sistema(id_sis):
         sistema.periodicidad_dias = data['periodicidad_dias'] or None
 
     db.session.commit()
-    log('ACTUALIZAR_SISTEMA', f"Sistema {id_sis} actualizado",
+    log('ACTUALIZAR_SISTEMA', f"Sistema '{sistema.nombre}' (id:{id_sis}) actualizado",
         id_usuario=int(usuario), modulo='entidades')
     return jsonify(_serializar_sistema(sistema))
 
@@ -347,9 +400,10 @@ def actualizar_sistema(id_sis):
 @requiere_permiso('editar_clientes')
 def desactivar_sistema(id_sis):
     sistema = db.get_or_404(Sistema, id_sis)
+    nombre_sis = sistema.nombre
     sistema.estado = False
     db.session.commit()
-    log('DESACTIVAR_SISTEMA', f"Sistema {id_sis} desactivado",
+    log('DESACTIVAR_SISTEMA', f"Sistema '{nombre_sis}' (id:{id_sis}) desactivado",
         id_usuario=int(get_jwt_identity()), modulo='entidades')
     return jsonify({'mensaje': 'Sistema desactivado'})
 
@@ -455,6 +509,7 @@ def _serializar(e: Entidad) -> dict:
         'empleado': e.empleado,
         'estado': e.estado,
         'fecha_registro': e.fecha_registro.isoformat() if e.fecha_registro else None,
+        'telefonos': _get_telefonos_entidad(e.id),
     }
     if e.natural:
         base['nombre'] = e.nombre

@@ -243,6 +243,23 @@ def crear_documento(id_proyecto):
     return jsonify(_serializar_documento(doc)), 201
 
 
+@bp.delete('/<int:id_proyecto>/documentos/<int:id_doc>')
+@jwt_required()
+@requiere_permiso('editar_proyectos')
+def eliminar_documento(id_proyecto, id_doc):
+    proyecto = db.get_or_404(Proyecto, id_proyecto)
+    doc = db.get_or_404(Documento, id_doc)
+    if doc.id_proyecto != id_proyecto:
+        return jsonify({'error': 'El documento no pertenece a este proyecto'}), 403
+    id_usuario = int(get_jwt_identity())
+    nombre = doc.nombre
+    db.session.delete(doc)
+    db.session.commit()
+    log('ELIMINAR_DOCUMENTO', f"Documento '{nombre}' eliminado del proyecto '{proyecto.codigo}'",
+        id_usuario=id_usuario, modulo='proyectos')
+    return jsonify({'ok': True})
+
+
 def _serializar_documento(d: Documento) -> dict:
     from ...models.seguridad.auth import Usuario
     usuario = db.session.get(Usuario, d.id_usuario)

@@ -13,6 +13,7 @@ export const proyectosApi = {
   crearNota:      (id, data) => client.post(`/proyectos/${id}/bitacora`, data),
 
   // Documentos de proyecto
-  listarDocumentos: (id)       => client.get(`/proyectos/${id}/documentos`),
-  subirDocumento:   (id, data) => client.post(`/proyectos/${id}/documentos`, data),
+  listarDocumentos:  (id)           => client.get(`/proyectos/${id}/documentos`),
+  subirDocumento:    (id, data)     => client.post(`/proyectos/${id}/documentos`, data),
+  eliminarDocumento: (id, id_doc)   => client.delete(`/proyectos/${id}/documentos/${id_doc}`),
 }

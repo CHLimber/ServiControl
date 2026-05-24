@@ -2,16 +2,8 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { proyectosApi } from '../../api/proyectos'
 import { ordenesApi } from '../../api/ordenes'
-import client from '../../api/client'
-import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X } from 'lucide-react'
-
-const finanzasApi = {
-  listarPagos:       ()           => client.get('/finanzas/pagos'),
-  listarGastos:      ()           => client.get('/finanzas/gastos'),
-  registrarPago:     (data)       => client.post('/finanzas/pagos', data),
-  registrarGasto:    (data)       => client.post('/finanzas/gastos', data),
-  cuentasPorCobrar:  ()           => client.get('/finanzas/cuentas-por-cobrar'),
-}
+import { finanzasApi } from '../../api/finanzas'
+import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X, Trash2 } from 'lucide-react'
 
 const TIPOS_PAGO   = ['anticipo', 'pago_parcial', 'pago_final', 'otro']
 const METODOS_PAGO = ['efectivo', 'transferencia', 'QR', 'otro']
@@ -32,8 +24,8 @@ function formatFecha(iso) {
   return new Date(iso).toLocaleDateString('es-BO')
 }
 
-const FORM_PAGO_VACIO   = { id_proyecto: '', tipo_pago: 'anticipo', monto: '', fecha_pago: '', metodo: 'efectivo', observacion: '' }
-const FORM_GASTO_VACIO  = { id_orden: '', concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' }
+const FORM_PAGO_VACIO  = { id_proyecto: '', tipo_pago: 'anticipo', monto: '', fecha_pago: '', metodo: 'efectivo', observacion: '' }
+const FORM_GASTO_VACIO = { id_orden: '', concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' }
 
 export default function FinanzasPage() {
   const location = useLocation()
@@ -95,7 +87,7 @@ export default function FinanzasPage() {
     setGuardando(true)
     setErrPago('')
     try {
-      const nuevo = await finanzasApi.registrarPago(formPago)
+      const nuevo = await finanzasApi.registrarPago({ ...formPago, id_proyecto: Number(formPago.id_proyecto) })
       setPagos(prev => [nuevo, ...prev])
       setModalPago(false)
       setFormPago(FORM_PAGO_VACIO)
@@ -115,7 +107,7 @@ export default function FinanzasPage() {
     setGuardando(true)
     setErrGasto('')
     try {
-      const nuevo = await finanzasApi.registrarGasto(formGasto)
+      const nuevo = await finanzasApi.registrarGasto({ ...formGasto, id_orden: Number(formGasto.id_orden) })
       setGastos(prev => [nuevo, ...prev])
       setModalGasto(false)
       setFormGasto(FORM_GASTO_VACIO)
@@ -123,6 +115,16 @@ export default function FinanzasPage() {
       setErrGasto(err.error || 'Error al registrar el gasto.')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  async function eliminarGasto(g) {
+    if (!confirm(`¿Eliminar el gasto "${g.concepto}" de ${formatBs(g.monto)}?`)) return
+    try {
+      await finanzasApi.eliminarGasto(g.id)
+      setGastos(prev => prev.filter(x => x.id !== g.id))
+    } catch {
+      alert('No se pudo eliminar el gasto.')
     }
   }
 
@@ -241,6 +243,12 @@ export default function FinanzasPage() {
       {/* Tab: Gastos */}
       {tab === 'gastos' && (
         <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button className="btn btn-ghost btn-sm"
+              onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
+              + Registrar gasto
+            </button>
+          </div>
           {cargando ? <div className="empty-state">Cargando...</div> :
            gastos.length === 0 ? <div className="empty-state">No hay gastos registrados.</div> : (
             <div className="table-wrap">
@@ -252,6 +260,8 @@ export default function FinanzasPage() {
                     <th>Descripción</th>
                     <th>Monto</th>
                     <th>Fecha</th>
+                    <th>Registrado por</th>
+                    <th style={{ width: 48 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -262,6 +272,14 @@ export default function FinanzasPage() {
                       <td className="text-sm text-muted">{g.descripcion || '—'}</td>
                       <td style={{ fontWeight: 600 }}>{formatBs(g.monto)}</td>
                       <td className="text-sm text-muted">{formatFecha(g.fecha_gasto)}</td>
+                      <td className="text-sm text-muted">{g.usuario || '—'}</td>
+                      <td>
+                        <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
+                          style={{ color: 'var(--danger)' }}
+                          onClick={() => eliminarGasto(g)}>
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

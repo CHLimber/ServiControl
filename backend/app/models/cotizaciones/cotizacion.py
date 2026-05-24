@@ -9,7 +9,7 @@ class Cotizacion(db.Model):
     id_servicio = db.Column(db.Integer, db.ForeignKey('servicio.id', name='fk_cotizacion_servicio'), nullable=False)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id', name='fk_cotizacion_usuario'), nullable=False)
     id_sistema = db.Column(db.Integer, db.ForeignKey('sistema.id', name='fk_cotizacion_sistema'), nullable=False)
-    estado = db.Column(db.Enum('borrador', 'enviada', 'aprobada', 'rechazada', 'vencida'), default='borrador')
+    estado = db.Column(db.Enum('borrador', 'enviada', 'aprobada', 'rechazada', 'vencida', 'convertida'), default='borrador')
     subtotal_productos = db.Column(db.Numeric(12, 2), default=0)
     mano_de_obra = db.Column(db.Numeric(12, 2), default=0)
     vigencia_dias = db.Column(db.Integer, default=30)

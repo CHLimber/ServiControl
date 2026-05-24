@@ -66,7 +66,7 @@ def actualizar(id_rol):
         rol.descripcion = (data['descripcion'] or '').strip() or None
 
     db.session.commit()
-    log('ACTUALIZAR_ROL', f"Rol {id_rol} actualizado", id_usuario=id_usuario, modulo='roles')
+    log('ACTUALIZAR_ROL', f"Rol '{rol.nombre}' (id:{id_rol}) actualizado", id_usuario=id_usuario, modulo='roles')
     return jsonify(_serializar_rol(rol))
 
 

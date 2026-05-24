@@ -3,16 +3,17 @@ import { cotizacionesApi } from '../../api/cotizaciones'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { productosApi } from '../../api/productos'
-import { Eye, Pencil, X } from 'lucide-react'
+import { Eye, Pencil, X, FolderOpen } from 'lucide-react'
 
-const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada', 'vencida']
+const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada', 'vencida', 'convertida']
 
 const BADGE_ESTADO = {
-  borrador:  'badge-gray',
-  enviada:   'badge-blue',
-  aprobada:  'badge-green',
-  rechazada: 'badge-red',
-  vencida:   'badge-yellow',
+  borrador:   'badge-gray',
+  enviada:    'badge-blue',
+  aprobada:   'badge-green',
+  rechazada:  'badge-red',
+  vencida:    'badge-yellow',
+  convertida: 'badge-purple',
 }
 
 const FILA_VACIA = { id_producto: '', id_proveedor: '', cantidad: 1, precio_unitario: '', observacion: '' }
@@ -52,6 +53,13 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const [formEditar, setFormEditar]         = useState({ mano_de_obra: 0, vigencia_dias: 30, observacion: '', detalles: [] })
   const [guardandoEditar, setGuardandoEditar] = useState(false)
   const [errEditar, setErrEditar]           = useState('')
+
+  // Modal convertir a proyecto (CU18)
+  const [modalConvertir, setModalConvertir] = useState(null)  // cotizacion o null
+  const [formConvertir, setFormConvertir]   = useState({ titulo: '', descripcion: '', fecha_inicio: '', fecha_fin: '' })
+  const [guardandoConvertir, setGuardandoConvertir] = useState(false)
+  const [errConvertir, setErrConvertir]     = useState('')
+  const [proyectoCreado, setProyectoCreado] = useState(null)
 
   // Mini-modal nuevo sistema
   const [modalSistema, setModalSistema] = useState(false)
@@ -253,6 +261,35 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
     }
   }
 
+  function abrirConvertir(cot) {
+    setFormConvertir({ titulo: `Proyecto ${cot.codigo}`, descripcion: '', fecha_inicio: '', fecha_fin: '' })
+    setErrConvertir('')
+    setProyectoCreado(null)
+    setModalConvertir(cot)
+  }
+
+  async function ejecutarConversion(e) {
+    e.preventDefault()
+    if (!formConvertir.titulo.trim()) {
+      setErrConvertir('El título del proyecto es obligatorio.')
+      return
+    }
+    setGuardandoConvertir(true)
+    setErrConvertir('')
+    try {
+      const proyecto = await cotizacionesApi.convertirProyecto(modalConvertir.id, formConvertir)
+      setCotizaciones(prev => prev.map(c =>
+        c.id === modalConvertir.id ? { ...c, estado: 'convertida' } : c
+      ))
+      if (detalle?.id === modalConvertir.id) setDetalle(d => ({ ...d, estado: 'convertida' }))
+      setProyectoCreado(proyecto)
+    } catch (err) {
+      setErrConvertir(err.error || 'Error al convertir la cotización.')
+    } finally {
+      setGuardandoConvertir(false)
+    }
+  }
+
   async function cambiarEstado(id, estado) {
     try {
       const actualizada = await cotizacionesApi.cambiarEstado(id, estado)
@@ -410,6 +447,13 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                     <button className="btn btn-ghost" style={{ color: 'var(--danger)' }}
                       onClick={() => cambiarEstado(detalle.id, 'rechazada')}>
                       Rechazar
+                    </button>
+                  </div>
+                )}
+                {detalle.estado === 'aprobada' && (
+                  <div className="modal-footer">
+                    <button className="btn btn-primary" onClick={() => abrirConvertir(detalle)}>
+                      <FolderOpen size={14} style={{ marginRight: 6 }} />Convertir en Proyecto
                     </button>
                   </div>
                 )}
@@ -641,6 +685,76 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal convertir a proyecto — CU18 */}
+      {modalConvertir && (
+        <div className="modal-overlay" onClick={() => { if (!guardandoConvertir) setModalConvertir(null) }}>
+          <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Convertir en proyecto — {modalConvertir.codigo}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalConvertir(null)} disabled={guardandoConvertir}>
+                <X size={14} />
+              </button>
+            </div>
+            {proyectoCreado ? (
+              <>
+                <div className="modal-body">
+                  <div className="alert alert-success" style={{ marginBottom: 0 }}>
+                    <strong>Proyecto creado exitosamente</strong>
+                    <div className="text-sm" style={{ marginTop: 4 }}>
+                      Código: <strong>{proyectoCreado.codigo}</strong> — {proyectoCreado.titulo}
+                    </div>
+                    <div className="text-sm text-muted">Estado inicial: {proyectoCreado.estado_nombre}</div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-primary" onClick={() => setModalConvertir(null)}>Cerrar</button>
+                </div>
+              </>
+            ) : (
+              <form onSubmit={ejecutarConversion}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label className="form-label">Título del proyecto *</label>
+                    <input className="input" maxLength={200}
+                      value={formConvertir.titulo}
+                      onChange={e => setFormConvertir(f => ({ ...f, titulo: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Descripción</label>
+                    <textarea className="input" rows={2}
+                      value={formConvertir.descripcion}
+                      onChange={e => setFormConvertir(f => ({ ...f, descripcion: e.target.value }))} />
+                  </div>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label className="form-label">Fecha inicio</label>
+                      <input type="date" className="input"
+                        value={formConvertir.fecha_inicio}
+                        onChange={e => setFormConvertir(f => ({ ...f, fecha_inicio: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Fecha fin estimada</label>
+                      <input type="date" className="input"
+                        value={formConvertir.fecha_fin}
+                        onChange={e => setFormConvertir(f => ({ ...f, fecha_fin: e.target.value }))} />
+                    </div>
+                  </div>
+                  {errConvertir && <div className="alert alert-danger">{errConvertir}</div>}
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-ghost" onClick={() => setModalConvertir(null)} disabled={guardandoConvertir}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={guardandoConvertir}>
+                    {guardandoConvertir ? 'Convirtiendo...' : 'Crear proyecto'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
 import {
-  BarChart3, Download, AlertTriangle,
+  BarChart3, Download,
 } from 'lucide-react'
 
 import LoginPage           from './pages/auth/LoginPage'
@@ -11,8 +11,10 @@ import EntidadesPage       from './pages/entidades/EntidadesPage'
 import CotizacionesPage    from './pages/cotizaciones/CotizacionesPage'
 import ProyectosPage       from './pages/proyectos/ProyectosPage'
 import OrdenesPage         from './pages/ordenes/OrdenesPage'
-import MantenimientoPage   from './pages/mantenimiento/MantenimientoPage'
-import FinanzasPage        from './pages/finanzas/FinanzasPage'
+import MantenimientoPage          from './pages/mantenimiento/MantenimientoPage'
+import AlertasMantenimientoPage   from './pages/mantenimiento/AlertasMantenimientoPage'
+import FinanzasPage            from './pages/finanzas/FinanzasPage'
+import ReporteFinancieroPage   from './pages/finanzas/ReporteFinancieroPage'
 import EstablecimientosPage from './pages/establecimientos/EstablecimientosPage'
 import SistemasPage        from './pages/sistemas/SistemasPage'
 import BitacorasClientePage   from './pages/bitacoras/BitacorasClientePage'
@@ -71,13 +73,13 @@ export default function App() {
 
       {/* Operaciones — Mantenimiento */}
       <Route path="/mantenimiento"         element={<RutaProtegida><MantenimientoPage /></RutaProtegida>} />
-      <Route path="/mantenimiento/alertas" element={P('Alertas de mantenimiento', 'Alertas pendientes de mantenimiento vencido o próximo', <AlertTriangle size={32} />)} />
+      <Route path="/mantenimiento/alertas" element={<RutaProtegida><AlertasMantenimientoPage /></RutaProtegida>} />
 
       {/* Finanzas */}
       <Route path="/finanzas/pago"    element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
       <Route path="/finanzas/gastos"  element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
       <Route path="/finanzas/cuentas" element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
-      <Route path="/finanzas/reporte" element={P('Reporte financiero', 'Vista consolidada de ingresos y gastos por período', <BarChart3 size={32} />)} />
+      <Route path="/finanzas/reporte" element={<RutaProtegida><ReporteFinancieroPage /></RutaProtegida>} />
 
       {/* Registros — Bitácoras */}
       <Route path="/bitacoras/cliente"    element={<RutaProtegida><BitacorasClientePage /></RutaProtegida>} />

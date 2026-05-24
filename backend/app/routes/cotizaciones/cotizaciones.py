@@ -6,6 +6,7 @@ from ...models.cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
 from ...models.seguridad.auth import Usuario
 from ...models.catalogo.producto import Producto
 from ...models.entidades.entidad import Entidad
+from ...models.catalogo.proveedor import Proveedor
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
 
@@ -157,7 +158,7 @@ def cambiar_estado(id_cotizacion):
     data = request.get_json()
     username = get_jwt_identity()
 
-    estados_validos = ('borrador', 'enviada', 'aprobada', 'rechazada', 'vencida')
+    estados_validos = ('borrador', 'enviada', 'aprobada', 'rechazada', 'vencida', 'convertida')
     nuevo_estado = data.get('estado')
     if nuevo_estado not in estados_validos:
         return jsonify({'error': 'Estado no válido'}), 400
@@ -167,6 +168,86 @@ def cambiar_estado(id_cotizacion):
     log('CAMBIAR_ESTADO_COTIZACION', f"Cotización {c.codigo} → {nuevo_estado}",
         id_usuario=_get_usuario_id(username), modulo='cotizaciones')
     return jsonify(_serializar(c))
+
+
+@bp.post('/<int:id_cotizacion>/convertir-proyecto')
+@jwt_required()
+@requiere_permiso('crear_proyectos')
+def convertir_proyecto(id_cotizacion):
+    """CU18 — Convierte una cotización aprobada en un proyecto."""
+    c = db.get_or_404(Cotizacion, id_cotizacion)
+    if c.estado != 'aprobada':
+        return jsonify({'error': 'Solo se pueden convertir cotizaciones aprobadas'}), 400
+
+    data = request.get_json() or {}
+    id_usuario = _get_usuario_id(get_jwt_identity())
+
+    from ...models.proyectos.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
+    from ...models.entidades.entidad import Sistema
+    from datetime import datetime
+
+    estado_inicial = EstadoProyecto.query.order_by(EstadoProyecto.orden).first()
+    if not estado_inicial:
+        return jsonify({'error': 'No hay estados de proyecto configurados'}), 500
+
+    sistema = db.session.get(Sistema, c.id_sistema)
+    if not sistema or not sistema.id_establecimiento:
+        return jsonify({'error': 'El sistema de la cotización no tiene un establecimiento asignado. Asigná uno antes de convertir.'}), 400
+    id_establecimiento = sistema.id_establecimiento
+
+    prefijo = datetime.now().strftime('PROY-%Y%m-')
+    ultimo = (Proyecto.query
+              .filter(Proyecto.codigo.like(f'{prefijo}%'))
+              .order_by(Proyecto.id.desc())
+              .first())
+    siguiente = 1
+    if ultimo:
+        try:
+            siguiente = int(ultimo.codigo.split('-')[-1]) + 1
+        except ValueError:
+            pass
+    codigo = f"{prefijo}{siguiente:04d}"
+
+    titulo = (data.get('titulo') or f'Proyecto {c.codigo}').strip()
+
+    proyecto = Proyecto(
+        codigo=codigo,
+        id_entidad=c.id_entidad,
+        id_establecimiento=id_establecimiento,
+        id_servicio=c.id_servicio,
+        id_estado_proyecto=estado_inicial.id,
+        id_usuario=id_usuario,
+        id_cotizacion=c.id,
+        id_sistema=c.id_sistema,
+        titulo=titulo,
+        descripcion=(data.get('descripcion') or '').strip() or None,
+        fecha_inicio=data.get('fecha_inicio') or None,
+        fecha_fin=data.get('fecha_fin') or None,
+    )
+    db.session.add(proyecto)
+    db.session.flush()
+
+    db.session.add(ProyectoHistorial(
+        id_proyecto=proyecto.id,
+        id_estado_anterior=None,
+        id_estado_nuevo=estado_inicial.id,
+        id_usuario=id_usuario,
+        observacion=f'Proyecto creado desde cotización {c.codigo}',
+    ))
+
+    c.estado = 'convertida'
+    db.session.commit()
+
+    log('CONVERTIR_COTIZACION', f"Cotización {c.codigo} convertida al proyecto {codigo}",
+        id_usuario=id_usuario, modulo='cotizaciones')
+
+    return jsonify({
+        'id': proyecto.id,
+        'codigo': proyecto.codigo,
+        'titulo': proyecto.titulo,
+        'id_cotizacion': proyecto.id_cotizacion,
+        'estado_nombre': estado_inicial.nombre,
+    }), 201
 
 
 def _serializar(c: Cotizacion, detalle: bool = False) -> dict:
@@ -190,7 +271,7 @@ def _serializar(c: Cotizacion, detalle: bool = False) -> dict:
         prod_ids = [d.id_producto for d in c.detalles]
         prov_ids = [d.id_proveedor for d in c.detalles]
         prods_map = {p.id: p.nombre for p in Producto.query.filter(Producto.id.in_(prod_ids)).all()} if prod_ids else {}
-        provs_map = {e.id: e.nombre for e in Entidad.query.filter(Entidad.id.in_(prov_ids)).all()} if prov_ids else {}
+        provs_map = {p.id: p.nombre for p in Proveedor.query.filter(Proveedor.id.in_(prov_ids)).all()} if prov_ids else {}
         data['detalles'] = [
             {
                 'id': d.id,
