@@ -59,7 +59,7 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
 
   function abrirEditar(e) {
     setEditando(e)
-    const tels = e.telefonos && e.telefonos.length > 0 ? e.telefonos : ['']
+    const tels = e.telefonos && e.telefonos.length > 0 ? e.telefonos.map(t => t.numero) : ['']
     if (e.tipo === 'natural') {
       setForm({ tipo: 'natural', nombre: e.nombre || '', ci: e.ci || '',
                 sexo: e.sexo || '', fecha_nacimiento: e.fecha_nacimiento || '',
@@ -227,11 +227,11 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
                     <td className="text-sm text-muted">{e.email || '—'}</td>
                     <td className="text-sm">
                       {e.telefonos && e.telefonos.length > 0
-                        ? e.telefonos.map((t, i) => (
-                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 3,
+                        ? e.telefonos.map((t) => (
+                            <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3,
                               background: 'var(--bg)', border: '1px solid var(--border)',
                               borderRadius: 4, padding: '1px 6px', fontSize: 12, marginRight: 4 }}>
-                              <Phone size={10} style={{ opacity: 0.5 }} />{t}
+                              <Phone size={10} style={{ opacity: 0.5 }} />{t.numero}
                             </span>
                           ))
                         : <span className="text-muted">—</span>

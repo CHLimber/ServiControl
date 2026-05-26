@@ -1,5 +1,8 @@
-from flask import Blueprint, request, jsonify
+import os
+import uuid
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
 from datetime import datetime
 from ...extensions import db
 from ...models.proyectos.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
@@ -192,7 +195,12 @@ def _serializar_nota(n: BitacoraProyecto) -> dict:
     }
 
 
-# ── Documentos de proyecto ───────────────────────────────────────
+# ── CU30: Documentos de proyecto (upload real) ───────────────────
+
+def _extension_permitida(filename: str) -> bool:
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    return ext in current_app.config.get('ALLOWED_EXTENSIONS', set())
+
 
 @bp.get('/<int:id_proyecto>/documentos')
 @jwt_required()
@@ -211,36 +219,64 @@ def listar_documentos(id_proyecto):
 @bp.post('/<int:id_proyecto>/documentos')
 @jwt_required()
 @requiere_permiso('ver_proyectos')
-def crear_documento(id_proyecto):
+def subir_documento(id_proyecto):
     proyecto = db.get_or_404(Proyecto, id_proyecto)
-    data = request.get_json()
     id_usuario = int(get_jwt_identity())
 
-    nombre = (data.get('nombre') or '').strip()
-    ruta = (data.get('ruta') or '').strip()
-    id_tipo = data.get('id_tipo_documento')
+    nombre = (request.form.get('nombre') or '').strip()
+    id_tipo = request.form.get('id_tipo_documento')
+    descripcion = (request.form.get('descripcion') or '').strip() or None
+    archivo = request.files.get('archivo')
 
     if not nombre:
         return jsonify({'error': 'El nombre del documento es requerido'}), 400
-    if not ruta:
-        return jsonify({'error': 'La ruta o URL del documento es requerida'}), 400
     if not id_tipo:
         return jsonify({'error': 'El tipo de documento es requerido'}), 400
+    if not archivo or not archivo.filename:
+        return jsonify({'error': 'Debe adjuntar un archivo'}), 400
+
+    nombre_seguro = secure_filename(archivo.filename)
+    if not _extension_permitida(nombre_seguro):
+        exts = ', '.join(sorted(current_app.config.get('ALLOWED_EXTENSIONS', [])))
+        return jsonify({'error': f'Tipo de archivo no permitido. Formatos aceptados: {exts}'}), 400
+
+    nombre_guardado = f"{uuid.uuid4().hex}_{nombre_seguro}"
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_folder, exist_ok=True)
+    archivo.save(os.path.join(upload_folder, nombre_guardado))
 
     doc = Documento(
         id_proyecto=id_proyecto,
         id_usuario=id_usuario,
-        id_tipo_documento=id_tipo,
+        id_tipo_documento=int(id_tipo),
         nombre=nombre,
-        ruta=ruta,
-        descripcion=(data.get('descripcion') or '').strip() or None,
+        ruta=nombre_guardado,
+        descripcion=descripcion,
     )
     db.session.add(doc)
     db.session.commit()
 
-    log('SUBIR_DOCUMENTO', f"Documento '{nombre}' agregado al proyecto '{proyecto.codigo}'",
+    log('SUBIR_DOCUMENTO', f"Documento '{nombre}' subido al proyecto '{proyecto.codigo}'",
         id_usuario=id_usuario, modulo='proyectos')
     return jsonify(_serializar_documento(doc)), 201
+
+
+@bp.get('/<int:id_proyecto>/documentos/<int:id_doc>/archivo')
+@jwt_required()
+@requiere_permiso('ver_proyectos')
+def descargar_documento(id_proyecto, id_doc):
+    doc = db.get_or_404(Documento, id_doc)
+    if doc.id_proyecto != id_proyecto:
+        return jsonify({'error': 'El documento no pertenece a este proyecto'}), 403
+
+    upload_folder = current_app.config['UPLOAD_FOLDER']
+    como_adjunto = request.args.get('dl') == '1'
+    return send_from_directory(
+        upload_folder,
+        doc.ruta,
+        as_attachment=como_adjunto,
+        download_name=doc.nombre + ('.' + doc.ruta.rsplit('.', 1)[-1] if '.' in doc.ruta else ''),
+    )
 
 
 @bp.delete('/<int:id_proyecto>/documentos/<int:id_doc>')
@@ -251,8 +287,15 @@ def eliminar_documento(id_proyecto, id_doc):
     doc = db.get_or_404(Documento, id_doc)
     if doc.id_proyecto != id_proyecto:
         return jsonify({'error': 'El documento no pertenece a este proyecto'}), 403
+
     id_usuario = int(get_jwt_identity())
     nombre = doc.nombre
+
+    # Eliminar el archivo físico
+    ruta_fisica = os.path.join(current_app.config['UPLOAD_FOLDER'], doc.ruta)
+    if os.path.exists(ruta_fisica):
+        os.remove(ruta_fisica)
+
     db.session.delete(doc)
     db.session.commit()
     log('ELIMINAR_DOCUMENTO', f"Documento '{nombre}' eliminado del proyecto '{proyecto.codigo}'",

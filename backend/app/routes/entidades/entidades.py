@@ -15,12 +15,12 @@ bp = Blueprint('entidades', __name__)
 
 def _get_telefonos_entidad(id_entidad):
     rows = db.session.execute(
-        text("SELECT t.numero FROM telefono t "
+        text("SELECT t.id, t.numero FROM telefono t "
              "JOIN telefono_entidad te ON te.id_telefono = t.id "
              "WHERE te.id_entidad = :id"),
         {'id': id_entidad},
     ).fetchall()
-    return [r[0] for r in rows]
+    return [{'id': r[0], 'numero': r[1]} for r in rows]
 
 
 def _set_telefonos_entidad(id_entidad, numeros):
@@ -191,6 +191,79 @@ def desactivar(id_entidad):
     log('DESACTIVAR_ENTIDAD', f"Entidad '{nombre}' (id:{id_entidad}) desactivada",
         id_usuario=int(usuario), modulo='entidades')
     return jsonify({'mensaje': 'Entidad desactivada'})
+
+
+# ── CU08: CRUD independiente de teléfonos de entidad ────────────
+
+@bp.get('/<int:id_entidad>/telefonos')
+@jwt_required()
+@requiere_permiso('ver_clientes')
+def listar_telefonos(id_entidad):
+    db.get_or_404(Entidad, id_entidad)
+    return jsonify(_get_telefonos_entidad(id_entidad))
+
+
+@bp.post('/<int:id_entidad>/telefonos')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def agregar_telefono(id_entidad):
+    entidad = db.get_or_404(Entidad, id_entidad)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    numero = (data.get('numero') or '').strip()
+    if not numero:
+        return jsonify({'error': 'El número de teléfono es requerido'}), 400
+
+    tel = Telefono(numero=numero)
+    db.session.add(tel)
+    db.session.flush()
+    db.session.execute(
+        text("INSERT INTO telefono_entidad (id_telefono, id_entidad) VALUES (:tid, :eid)"),
+        {'tid': tel.id, 'eid': id_entidad},
+    )
+    db.session.commit()
+    log('AGREGAR_TELEFONO_ENTIDAD', f"Teléfono '{numero}' agregado a '{entidad.nombre}'",
+        id_usuario=id_usuario, modulo='entidades')
+    return jsonify({'id': tel.id, 'numero': tel.numero}), 201
+
+
+@bp.delete('/<int:id_entidad>/telefonos/<int:id_tel>')
+@jwt_required()
+@requiere_permiso('editar_clientes')
+def eliminar_telefono(id_entidad, id_tel):
+    entidad = db.get_or_404(Entidad, id_entidad)
+    id_usuario = int(get_jwt_identity())
+
+    rel = db.session.execute(
+        text("SELECT id_telefono FROM telefono_entidad "
+             "WHERE id_entidad = :eid AND id_telefono = :tid"),
+        {'eid': id_entidad, 'tid': id_tel},
+    ).fetchone()
+    if not rel:
+        return jsonify({'error': 'Teléfono no encontrado para esta entidad'}), 404
+
+    db.session.execute(
+        text("DELETE FROM telefono_entidad WHERE id_entidad = :eid AND id_telefono = :tid"),
+        {'eid': id_entidad, 'tid': id_tel},
+    )
+    db.session.flush()
+
+    en_uso = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_entidad WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    en_proveedor = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_proveedor WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    if not en_uso and not en_proveedor:
+        db.session.execute(text("DELETE FROM telefono WHERE id = :id"), {'id': id_tel})
+
+    db.session.commit()
+    log('ELIMINAR_TELEFONO_ENTIDAD', f"Teléfono eliminado de '{entidad.nombre}'",
+        id_usuario=id_usuario, modulo='entidades')
+    return jsonify({'mensaje': 'Teléfono eliminado'})
 
 
 @bp.get('/<int:id_entidad>/sistemas')

@@ -7,6 +7,11 @@ export const entidadesApi = {
   actualizar:(id, data)   => client.put(`/entidades/${id}`, data),
   desactivar:(id)         => client.delete(`/entidades/${id}`),
 
+  // CU08 — Teléfonos de entidad (CRUD independiente)
+  listarTelefonos:  (id)       => client.get(`/entidades/${id}/telefonos`),
+  agregarTelefono:  (id, data) => client.post(`/entidades/${id}/telefonos`, data),
+  eliminarTelefono: (id, idTel) => client.delete(`/entidades/${id}/telefonos/${idTel}`),
+
   // CU28 — Bitácora de cliente
   listarBitacora: (id)       => client.get(`/entidades/${id}/bitacora`),
   crearNota:      (id, data) => client.post(`/entidades/${id}/bitacora`, data),

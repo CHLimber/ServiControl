@@ -12,12 +12,12 @@ bp = Blueprint('empleados', __name__)
 
 def _get_telefonos(id_entidad):
     rows = db.session.execute(
-        text("SELECT t.numero FROM telefono t "
+        text("SELECT t.id, t.numero FROM telefono t "
              "JOIN telefono_entidad te ON te.id_telefono = t.id "
              "WHERE te.id_entidad = :id"),
         {'id': id_entidad},
     ).fetchall()
-    return [r[0] for r in rows]
+    return [{'id': r[0], 'numero': r[1]} for r in rows]
 
 
 def _set_telefonos(id_entidad, numeros):
@@ -224,6 +224,177 @@ def actualizar(id_emp):
     log('ACTUALIZAR_EMPLEADO', f"Empleado '{ent.nombre}' (id:{id_emp}) actualizado",
         id_usuario=id_usuario, modulo='empleados')
     return jsonify(_serializar(emp))
+
+
+# ── CU10: Asignar cargo de empleado (independiente) ─────────────
+
+@bp.put('/<int:id_emp>/cargo')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def asignar_cargo(id_emp):
+    emp = db.get_or_404(Empleado, id_emp)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    id_cargo = data.get('id_cargo') or None
+    if id_cargo is not None:
+        cargo = db.session.get(Cargo, id_cargo)
+        if not cargo:
+            return jsonify({'error': 'Cargo no encontrado'}), 404
+
+    cargo_ant = db.session.get(Cargo, emp.id_cargo) if emp.id_cargo else None
+    emp.id_cargo = id_cargo
+    db.session.commit()
+
+    cargo_nuevo = db.session.get(Cargo, id_cargo) if id_cargo else None
+    log('ASIGNAR_CARGO_EMPLEADO',
+        f"Cargo de '{emp.entidad.nombre}': "
+        f"'{cargo_ant.nombre if cargo_ant else 'Sin cargo'}' → '{cargo_nuevo.nombre if cargo_nuevo else 'Sin cargo'}'",
+        id_usuario=id_usuario, modulo='empleados')
+    return jsonify(_serializar(emp))
+
+
+# ── CU11: CRUD independiente de especialidades de empleado ───────
+
+@bp.get('/<int:id_emp>/especialidades')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def listar_especialidades(id_emp):
+    emp = db.get_or_404(Empleado, id_emp)
+    return jsonify(_get_especialidades(emp.id))
+
+
+@bp.post('/<int:id_emp>/especialidades')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def agregar_especialidad(id_emp):
+    emp = db.get_or_404(Empleado, id_emp)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    id_esp = data.get('id_especialidad')
+    if not id_esp:
+        return jsonify({'error': 'id_especialidad es requerido'}), 400
+
+    esp = db.session.get(Especialidad, int(id_esp))
+    if not esp:
+        return jsonify({'error': 'Especialidad no encontrada'}), 404
+
+    ya_tiene = db.session.execute(
+        text("SELECT COUNT(*) FROM empleado_especialidad "
+             "WHERE id_empleado = :emp AND id_especialidad = :esp"),
+        {'emp': id_emp, 'esp': int(id_esp)},
+    ).scalar()
+    if ya_tiene:
+        return jsonify({'error': 'El empleado ya tiene esta especialidad'}), 409
+
+    db.session.execute(
+        text("INSERT INTO empleado_especialidad (id_empleado, id_especialidad) VALUES (:emp, :esp)"),
+        {'emp': id_emp, 'esp': int(id_esp)},
+    )
+    db.session.commit()
+    log('AGREGAR_ESPECIALIDAD',
+        f"Especialidad '{esp.nombre}' acreditada a '{emp.entidad.nombre}'",
+        id_usuario=id_usuario, modulo='empleados')
+    return jsonify({'id': esp.id, 'nombre': esp.nombre}), 201
+
+
+@bp.delete('/<int:id_emp>/especialidades/<int:id_esp>')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def quitar_especialidad(id_emp, id_esp):
+    emp = db.get_or_404(Empleado, id_emp)
+    id_usuario = int(get_jwt_identity())
+
+    resultado = db.session.execute(
+        text("DELETE FROM empleado_especialidad "
+             "WHERE id_empleado = :emp AND id_especialidad = :esp"),
+        {'emp': id_emp, 'esp': id_esp},
+    )
+    if resultado.rowcount == 0:
+        db.session.rollback()
+        return jsonify({'error': 'El empleado no tiene esta especialidad'}), 404
+
+    db.session.commit()
+    esp = db.session.get(Especialidad, id_esp)
+    log('QUITAR_ESPECIALIDAD',
+        f"Especialidad '{esp.nombre if esp else id_esp}' removida de '{emp.entidad.nombre}'",
+        id_usuario=id_usuario, modulo='empleados')
+    return jsonify({'mensaje': 'Especialidad removida'})
+
+
+# ── CU08: CRUD independiente de teléfonos de empleado ───────────
+
+@bp.get('/<int:id_emp>/telefonos')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def listar_telefonos(id_emp):
+    emp = db.get_or_404(Empleado, id_emp)
+    return jsonify(_get_telefonos(emp.id_entidad))
+
+
+@bp.post('/<int:id_emp>/telefonos')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def agregar_telefono(id_emp):
+    emp = db.get_or_404(Empleado, id_emp)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    numero = (data.get('numero') or '').strip()
+    if not numero:
+        return jsonify({'error': 'El número de teléfono es requerido'}), 400
+
+    from ...models.catalogo.catalogo import Telefono
+    tel = Telefono(numero=numero)
+    db.session.add(tel)
+    db.session.flush()
+    db.session.execute(
+        text("INSERT INTO telefono_entidad (id_telefono, id_entidad) VALUES (:tid, :eid)"),
+        {'tid': tel.id, 'eid': emp.id_entidad},
+    )
+    db.session.commit()
+    log('AGREGAR_TELEFONO_EMPLEADO', f"Teléfono '{numero}' agregado a empleado {id_emp}",
+        id_usuario=id_usuario, modulo='empleados')
+    return jsonify({'id': tel.id, 'numero': tel.numero}), 201
+
+
+@bp.delete('/<int:id_emp>/telefonos/<int:id_tel>')
+@jwt_required()
+@requiere_permiso('gestionar_empleados')
+def eliminar_telefono(id_emp, id_tel):
+    emp = db.get_or_404(Empleado, id_emp)
+    id_usuario = int(get_jwt_identity())
+
+    rel = db.session.execute(
+        text("SELECT id_telefono FROM telefono_entidad "
+             "WHERE id_entidad = :eid AND id_telefono = :tid"),
+        {'eid': emp.id_entidad, 'tid': id_tel},
+    ).fetchone()
+    if not rel:
+        return jsonify({'error': 'Teléfono no encontrado para este empleado'}), 404
+
+    db.session.execute(
+        text("DELETE FROM telefono_entidad WHERE id_entidad = :eid AND id_telefono = :tid"),
+        {'eid': emp.id_entidad, 'tid': id_tel},
+    )
+    db.session.flush()
+
+    en_uso = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_entidad WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    en_proveedor = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_proveedor WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    if not en_uso and not en_proveedor:
+        db.session.execute(text("DELETE FROM telefono WHERE id = :id"), {'id': id_tel})
+
+    db.session.commit()
+    log('ELIMINAR_TELEFONO_EMPLEADO', f"Teléfono eliminado del empleado {id_emp}",
+        id_usuario=id_usuario, modulo='empleados')
+    return jsonify({'mensaje': 'Teléfono eliminado'})
 
 
 @bp.delete('/<int:id_emp>')

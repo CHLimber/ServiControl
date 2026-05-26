@@ -8,6 +8,11 @@ export const proveedoresApi = {
   actualizar: (id, data)      => client.put(`/proveedores/${id}`, data),
   desactivar: (id)            => client.delete(`/proveedores/${id}`),
 
+  // CU08 — Teléfonos de proveedor (CRUD independiente)
+  listarTelefonos:  (id)        => client.get(`/proveedores/${id}/telefonos`),
+  agregarTelefono:  (id, data)  => client.post(`/proveedores/${id}/telefonos`, data),
+  eliminarTelefono: (id, idTel) => client.delete(`/proveedores/${id}/telefonos/${idTel}`),
+
   // Catálogo de productos por proveedor (CU14)
   listarProductos:    (id)              => client.get(`/proveedores/${id}/productos`),
   agregarProducto:    (id, data)        => client.post(`/proveedores/${id}/productos`, data),

@@ -6,10 +6,21 @@ from dotenv import load_dotenv
 # Ruta absoluta al .env — funciona sin importar desde dónde se ejecute
 load_dotenv(Path(__file__).resolve().parent.parent / '.env', override=True)
 
+# Directorio raíz del backend (carpeta "backend/")
+_BASE_DIR = Path(__file__).resolve().parent.parent
+
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'dev-jwt-secret')
+
+    # Uploads de documentos
+    UPLOAD_FOLDER = str(_BASE_DIR / 'uploads' / 'documentos')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
+    ALLOWED_EXTENSIONS = {
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'rar',
+    }
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -35,6 +46,10 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME')
+
+    STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
+    STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
+    STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
 
 class DevelopmentConfig(Config):

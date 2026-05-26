@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { empleadosApi } from '../../api/empleados'
 import { catalogosApi } from '../../api/catalogos'
-import { Pencil, Trash2, X, Phone, Plus } from 'lucide-react'
+import { Pencil, Trash2, X, Phone, Plus, GraduationCap, Check } from 'lucide-react'
 
 const SEXOS = [
   { value: 'M', label: 'Masculino' },
@@ -34,6 +34,18 @@ export default function EmpleadosPage() {
   const [form, setForm]                 = useState(FORM_VACIO)
   const [guardando, setGuardando]       = useState(false)
   const [errForm, setErrForm]           = useState('')
+
+  // CU10 — Cargo inline
+  const [cargoEdit, setCargoEdit]           = useState(null)  // { id_emp, id_cargo }
+  const [guardandoCargo, setGuardandoCargo] = useState(false)
+
+  // CU11 — Modal especialidades
+  const [modalEsps, setModalEsps]       = useState(null)  // empleado seleccionado
+  const [espsEmpleado, setEspsEmpleado] = useState([])
+  const [cargandoEsps, setCargandoEsps] = useState(false)
+  const [espSel, setEspSel]             = useState('')
+  const [guardandoEsp, setGuardandoEsp] = useState(false)
+  const [errEsp, setErrEsp]             = useState('')
 
   useEffect(() => { cargarDatos() }, [verInactivos])
 
@@ -73,7 +85,7 @@ export default function EmpleadosPage() {
       email:            emp.email || '',
       id_cargo:         emp.id_cargo ? String(emp.id_cargo) : '',
       especialidades:   emp.especialidades.map(e => e.id),
-      telefonos:        emp.telefonos?.length ? [...emp.telefonos] : [''],
+      telefonos:        emp.telefonos?.length ? emp.telefonos.map(t => t.numero) : [''],
       estado:           emp.estado,
     })
     setErrForm('')
@@ -142,6 +154,79 @@ export default function EmpleadosPage() {
       setErrForm(err.response?.data?.error || err?.error || 'Error al guardar.')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  // CU10 — Cargo inline
+  async function guardarCargo(id_emp) {
+    if (guardandoCargo) return
+    setGuardandoCargo(true)
+    try {
+      const data = await empleadosApi.asignarCargo(id_emp, {
+        id_cargo: cargoEdit.id_cargo ? Number(cargoEdit.id_cargo) : null,
+      })
+      setEmpleados(prev => prev.map(e => e.id === id_emp ? data : e))
+      setCargoEdit(null)
+    } catch (err) {
+      alert(err.response?.data?.error || 'No se pudo actualizar el cargo.')
+    } finally {
+      setGuardandoCargo(false)
+    }
+  }
+
+  // CU11 — Especialidades modal
+  async function abrirModalEsps(emp) {
+    setModalEsps(emp)
+    setEspSel('')
+    setErrEsp('')
+    setCargandoEsps(true)
+    try {
+      const data = await empleadosApi.listarEspecialidades(emp.id)
+      setEspsEmpleado(data)
+    } catch {
+      setEspsEmpleado([])
+    } finally {
+      setCargandoEsps(false)
+    }
+  }
+
+  function cerrarModalEsps() {
+    setModalEsps(null)
+    setEspsEmpleado([])
+    setEspSel('')
+    setErrEsp('')
+  }
+
+  async function agregarEspecialidad(e) {
+    e.preventDefault()
+    if (!espSel) { setErrEsp('Seleccioná una especialidad.'); return }
+    setGuardandoEsp(true); setErrEsp('')
+    try {
+      const nueva = await empleadosApi.agregarEspecialidad(modalEsps.id, { id_especialidad: Number(espSel) })
+      setEspsEmpleado(prev => [...prev, nueva])
+      setEmpleados(prev => prev.map(emp =>
+        emp.id === modalEsps.id ? { ...emp, especialidades: [...emp.especialidades, nueva] } : emp
+      ))
+      setEspSel('')
+    } catch (err) {
+      setErrEsp(err.response?.data?.error || 'Error al agregar.')
+    } finally {
+      setGuardandoEsp(false)
+    }
+  }
+
+  async function quitarEspecialidad(idEsp, nombre) {
+    if (!confirm(`¿Quitar la especialidad "${nombre}" de ${modalEsps.nombre}?`)) return
+    try {
+      await empleadosApi.quitarEspecialidad(modalEsps.id, idEsp)
+      setEspsEmpleado(prev => prev.filter(e => e.id !== idEsp))
+      setEmpleados(prev => prev.map(emp =>
+        emp.id === modalEsps.id
+          ? { ...emp, especialidades: emp.especialidades.filter(e => e.id !== idEsp) }
+          : emp
+      ))
+    } catch {
+      alert('No se pudo quitar la especialidad.')
     }
   }
 
@@ -214,7 +299,7 @@ export default function EmpleadosPage() {
                   <th>Teléfono</th>
                   <th>Email</th>
                   <th>Estado</th>
-                  <th style={{ width: 90 }}>Acciones</th>
+                  <th style={{ width: 120 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,11 +307,53 @@ export default function EmpleadosPage() {
                   <tr key={emp.id} style={!emp.estado ? { opacity: 0.55 } : {}}>
                     <td style={{ fontWeight: 500 }}>{emp.nombre}</td>
                     <td className="text-sm">{emp.ci || '—'}</td>
-                    <td>
-                      {emp.cargo
-                        ? <span className="badge badge-blue">{emp.cargo}</span>
-                        : <span className="text-muted">—</span>}
+
+                    {/* CU10 — Cargo inline */}
+                    <td style={{ minWidth: 140 }}>
+                      {cargoEdit?.id_emp === emp.id ? (
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <select
+                            className="input"
+                            style={{ fontSize: 12, padding: '2px 6px', height: 28, flex: 1 }}
+                            value={cargoEdit.id_cargo}
+                            onChange={e => setCargoEdit(c => ({ ...c, id_cargo: e.target.value }))}
+                          >
+                            <option value="">Sin cargo</option>
+                            {cargos.map(c => (
+                              <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                          </select>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            disabled={guardandoCargo}
+                            onClick={() => guardarCargo(emp.id)}
+                            title="Confirmar"
+                          >
+                            {guardandoCargo ? '…' : <Check size={12} />}
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setCargoEdit(null)}
+                            title="Cancelar"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="btn btn-ghost"
+                          style={{ padding: 0 }}
+                          title="Cambiar cargo"
+                          onClick={() => setCargoEdit({ id_emp: emp.id, id_cargo: emp.id_cargo ? String(emp.id_cargo) : '' })}
+                        >
+                          {emp.cargo
+                            ? <span className="badge badge-blue" style={{ cursor: 'pointer' }}>{emp.cargo}</span>
+                            : <span className="text-muted text-sm" style={{ cursor: 'pointer' }}>— Asignar</span>}
+                        </button>
+                      )}
                     </td>
+
+                    {/* CU11 — Especialidades */}
                     <td className="text-sm text-muted" style={{ maxWidth: 160 }}>
                       {emp.especialidades.length > 0
                         ? emp.especialidades.map(e => e.nombre).join(', ')
@@ -234,7 +361,7 @@ export default function EmpleadosPage() {
                     </td>
                     <td className="text-sm text-muted">
                       {emp.telefonos?.length > 0
-                        ? emp.telefonos.join(', ')
+                        ? emp.telefonos.map(t => t.numero).join(', ')
                         : '—'}
                     </td>
                     <td className="text-sm text-muted">{emp.email || '—'}</td>
@@ -245,6 +372,13 @@ export default function EmpleadosPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          title="Gestionar especialidades"
+                          onClick={() => abrirModalEsps(emp)}
+                        >
+                          <GraduationCap size={14} />
+                        </button>
                         <button
                           className="btn btn-ghost btn-sm"
                           title="Editar"
@@ -274,6 +408,101 @@ export default function EmpleadosPage() {
           {filtrados.length} empleado{filtrados.length !== 1 ? 's' : ''}
         </div>
       </div>
+
+      {/* ── CU11: Modal gestionar especialidades ── */}
+      {modalEsps && (
+        <div className="modal-overlay" onClick={cerrarModalEsps}>
+          <div className="modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">Especialidades</h2>
+                <div className="text-sm text-muted">{modalEsps.nombre}</div>
+              </div>
+              <button className="btn btn-ghost btn-sm" onClick={cerrarModalEsps}>
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* Lista de especialidades actuales */}
+              {cargandoEsps ? (
+                <div className="empty-state" style={{ padding: '20px 0' }}>Cargando...</div>
+              ) : espsEmpleado.length === 0 ? (
+                <div className="empty-state" style={{ padding: '20px 0' }}>
+                  <GraduationCap size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
+                  <p>Sin especialidades acreditadas. Agregá una abajo.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                  {espsEmpleado.map(esp => (
+                    <span
+                      key={esp.id}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        background: 'var(--bg)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)', padding: '4px 10px', fontSize: 13,
+                      }}
+                    >
+                      {esp.nombre}
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: 0, color: 'var(--danger)', lineHeight: 1 }}
+                        title="Quitar"
+                        onClick={() => quitarEspecialidad(esp.id, esp.nombre)}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Formulario agregar */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <div style={{ fontWeight: 600, marginBottom: 10 }}>Acreditar especialidad</div>
+                <form onSubmit={agregarEspecialidad}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label">Especialidad *</label>
+                      <select
+                        className="input"
+                        value={espSel}
+                        onChange={e => { setEspSel(e.target.value); setErrEsp('') }}
+                      >
+                        <option value="">Seleccioná una especialidad...</option>
+                        {especialidades
+                          .filter(e => !espsEmpleado.some(x => x.id === e.id))
+                          .map(e => (
+                            <option key={e.id} value={e.id}>{e.nombre}</option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={guardandoEsp}
+                      style={{ marginBottom: 2 }}
+                    >
+                      <Plus size={14} />{guardandoEsp ? ' Agregando...' : ' Acreditar'}
+                    </button>
+                  </div>
+                  {errEsp && (
+                    <div className="alert alert-danger" style={{ marginTop: 8 }}>{errEsp}</div>
+                  )}
+                </form>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <span className="text-muted text-sm">
+                {espsEmpleado.length} especialidad{espsEmpleado.length !== 1 ? 'es' : ''} acreditada{espsEmpleado.length !== 1 ? 's' : ''}
+              </span>
+              <button className="btn btn-ghost" onClick={cerrarModalEsps}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal crear / editar */}
       {modalAbierto && (

@@ -12,6 +12,10 @@ export const finanzasApi = {
 
   cuentasPorCobrar: ()       => client.get('/finanzas/cuentas-por-cobrar'),
 
+  // CU42 — Stripe
+  crearStripeIntent:   (data) => client.post('/finanzas/stripe/crear-intent', data),
+  completarPagoStripe: (data) => client.post('/finanzas/stripe/completar', data),
+
   reporte: (params = {}) => {
     const qs = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v))

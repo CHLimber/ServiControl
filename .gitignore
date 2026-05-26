@@ -23,6 +23,10 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# ── Archivos subidos por usuarios ────────────────────
+backend/uploads/documentos/*
+!backend/uploads/documentos/.gitkeep
+
 # ── IDEs ─────────────────────────────────────────────
 .vscode/
 .idea/

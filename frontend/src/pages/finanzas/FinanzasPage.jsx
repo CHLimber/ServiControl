@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { proyectosApi } from '../../api/proyectos'
 import { ordenesApi } from '../../api/ordenes'
 import { finanzasApi } from '../../api/finanzas'
-import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X, Trash2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X, Trash2, CreditCard } from 'lucide-react'
+import PagoStripeModal from '../../components/PagoStripeModal'
 
 const TIPOS_PAGO   = ['anticipo', 'pago_parcial', 'pago_final', 'otro']
 const METODOS_PAGO = ['efectivo', 'transferencia', 'QR', 'otro']
@@ -46,8 +47,9 @@ export default function FinanzasPage() {
   const [proyectos, setProyectos] = useState([])
   const [ordenes, setOrdenes]     = useState([])
 
-  const [modalPago, setModalPago]   = useState(false)
-  const [modalGasto, setModalGasto] = useState(false)
+  const [modalPago, setModalPago]     = useState(false)
+  const [modalGasto, setModalGasto]   = useState(false)
+  const [modalStripe, setModalStripe] = useState(false)
   const [formPago, setFormPago]     = useState(FORM_PAGO_VACIO)
   const [formGasto, setFormGasto]   = useState(FORM_GASTO_VACIO)
   const [guardando, setGuardando]   = useState(false)
@@ -155,6 +157,10 @@ export default function FinanzasPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost" onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
             + Gasto
+          </button>
+          <button className="btn btn-ghost" onClick={() => setModalStripe(true)} title="Procesar pago con tarjeta via Stripe">
+            <CreditCard size={14} style={{ marginRight: 4 }} />
+            Stripe
           </button>
           <button className="btn btn-primary" onClick={() => { setErrPago(''); setFormPago(FORM_PAGO_VACIO); setModalPago(true) }}>
             + Registrar pago
@@ -430,6 +436,18 @@ export default function FinanzasPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Modal Stripe — CU42 */}
+      {modalStripe && (
+        <PagoStripeModal
+          proyectos={proyectos}
+          onClose={() => setModalStripe(false)}
+          onSuccess={nuevoPago => {
+            setPagos(prev => [nuevoPago, ...prev])
+            setModalStripe(false)
+          }}
+        />
       )}
 
       {/* Modal registrar gasto */}

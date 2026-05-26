@@ -9,6 +9,9 @@ def create_app(env: str = None):
     env = env or os.getenv('FLASK_ENV', 'default')
     app.config.from_object(config[env])
 
+    # Crear carpeta de uploads si no existe
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
     # Extensiones
     db.init_app(app)
     migrate.init_app(app, db)
@@ -32,7 +35,8 @@ def create_app(env: str = None):
     from .routes.proyectos.proyectos  import bp as proyectos_bp
     from .routes.ordenes.ordenes      import bp as ordenes_bp
     from .routes.mantenimiento.mantenimiento import bp as mantenimiento_bp
-    from .routes.finanzas.finanzas    import bp as finanzas_bp
+    from .routes.finanzas.finanzas       import bp as finanzas_bp
+    from .routes.finanzas.stripe_routes  import bp_stripe as finanzas_stripe_bp
     from .routes.notificaciones.notificaciones import bp as notificaciones_bp
     from .routes.auditoria.auditoria  import bp as auditoria_bp
     from .routes.empleados.empleados  import bp as empleados_bp
@@ -50,7 +54,8 @@ def create_app(env: str = None):
     app.register_blueprint(proyectos_bp,     url_prefix='/api/proyectos')
     app.register_blueprint(ordenes_bp,       url_prefix='/api/ordenes')
     app.register_blueprint(mantenimiento_bp, url_prefix='/api/mantenimiento')
-    app.register_blueprint(finanzas_bp,      url_prefix='/api/finanzas')
+    app.register_blueprint(finanzas_bp,        url_prefix='/api/finanzas')
+    app.register_blueprint(finanzas_stripe_bp, url_prefix='/api/finanzas')
     app.register_blueprint(notificaciones_bp,url_prefix='/api/notificaciones')
     app.register_blueprint(auditoria_bp,     url_prefix='/api/auditoria')
     app.register_blueprint(empleados_bp,     url_prefix='/api/empleados')

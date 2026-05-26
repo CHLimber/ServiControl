@@ -9,8 +9,10 @@ class Pago(db.Model):
     tipo_pago = db.Column(db.Enum('anticipo', 'pago_parcial', 'pago_final', 'otro'), nullable=False)
     monto = db.Column(db.Numeric(12, 2), nullable=False)
     fecha_pago = db.Column(db.Date, nullable=False)
-    metodo = db.Column(db.Enum('efectivo', 'transferencia', 'QR', 'otro'), nullable=False)
+    metodo = db.Column(db.Enum('efectivo', 'transferencia', 'QR', 'otro', 'stripe'), nullable=False)
     observacion = db.Column(db.Text)
+    stripe_payment_intent_id = db.Column(db.String(100), nullable=True, unique=True)
+    stripe_status = db.Column(db.String(50), nullable=True)
     fecha_registro = db.Column(db.DateTime, server_default=db.func.now())
 
 

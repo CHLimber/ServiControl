@@ -183,6 +183,79 @@ def desactivar(id_proveedor):
     return jsonify({'mensaje': 'Proveedor desactivado'})
 
 
+# ── CU08: CRUD independiente de teléfonos de proveedor ──────────
+
+@bp.get('/<int:id_proveedor>/telefonos')
+@jwt_required()
+@requiere_permiso('gestionar_catalogo')
+def listar_telefonos(id_proveedor):
+    db.get_or_404(Proveedor, id_proveedor)
+    return jsonify(_get_telefonos(id_proveedor))
+
+
+@bp.post('/<int:id_proveedor>/telefonos')
+@jwt_required()
+@requiere_permiso('gestionar_catalogo')
+def agregar_telefono(id_proveedor):
+    proveedor = db.get_or_404(Proveedor, id_proveedor)
+    data = request.get_json()
+    id_usuario = int(get_jwt_identity())
+
+    numero = (data.get('numero') or '').strip()
+    if not numero:
+        return jsonify({'error': 'El número de teléfono es requerido'}), 400
+
+    tel = Telefono(numero=numero)
+    db.session.add(tel)
+    db.session.flush()
+    db.session.execute(
+        text("INSERT INTO telefono_proveedor (id_telefono, id_proveedor) VALUES (:tid, :pid)"),
+        {'tid': tel.id, 'pid': id_proveedor},
+    )
+    db.session.commit()
+    log('AGREGAR_TELEFONO_PROVEEDOR', f"Teléfono '{numero}' agregado a '{proveedor.nombre}'",
+        id_usuario=id_usuario, modulo='proveedores')
+    return jsonify({'id': tel.id, 'numero': tel.numero}), 201
+
+
+@bp.delete('/<int:id_proveedor>/telefonos/<int:id_tel>')
+@jwt_required()
+@requiere_permiso('gestionar_catalogo')
+def eliminar_telefono(id_proveedor, id_tel):
+    proveedor = db.get_or_404(Proveedor, id_proveedor)
+    id_usuario = int(get_jwt_identity())
+
+    rel = db.session.execute(
+        text("SELECT id_telefono FROM telefono_proveedor "
+             "WHERE id_proveedor = :pid AND id_telefono = :tid"),
+        {'pid': id_proveedor, 'tid': id_tel},
+    ).fetchone()
+    if not rel:
+        return jsonify({'error': 'Teléfono no encontrado para este proveedor'}), 404
+
+    db.session.execute(
+        text("DELETE FROM telefono_proveedor WHERE id_proveedor = :pid AND id_telefono = :tid"),
+        {'pid': id_proveedor, 'tid': id_tel},
+    )
+    db.session.flush()
+
+    en_entidad = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_entidad WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    en_proveedor = db.session.execute(
+        text("SELECT COUNT(*) FROM telefono_proveedor WHERE id_telefono = :id"),
+        {'id': id_tel},
+    ).scalar()
+    if not en_entidad and not en_proveedor:
+        db.session.execute(text("DELETE FROM telefono WHERE id = :id"), {'id': id_tel})
+
+    db.session.commit()
+    log('ELIMINAR_TELEFONO_PROVEEDOR', f"Teléfono eliminado de '{proveedor.nombre}'",
+        id_usuario=id_usuario, modulo='proveedores')
+    return jsonify({'mensaje': 'Teléfono eliminado'})
+
+
 # ── CU14: Asociar Producto a Proveedor ──────────────────────────
 
 @bp.get('/<int:id_proveedor>/productos')

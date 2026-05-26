@@ -340,6 +340,8 @@ def _serializar_pago(p: Pago) -> dict:
         'monto': float(p.monto),
         'fecha_pago': p.fecha_pago.isoformat() if p.fecha_pago else None,
         'observacion': p.observacion,
+        'stripe_payment_intent_id': getattr(p, 'stripe_payment_intent_id', None),
+        'stripe_status': getattr(p, 'stripe_status', None),
         'fecha_registro': p.fecha_registro.isoformat() if p.fecha_registro else None,
     }
 
