@@ -43,6 +43,7 @@ CREATE TABLE servicio (
   nombre         	VARCHAR(150) NOT NULL,
   descripcion    	TEXT,
   precio         	DECIMAL(12,2) NOT NULL,
+  estado         	BOOLEAN NOT NULL DEFAULT TRUE,
 
   UNIQUE KEY uk_servicio_nombre (nombre)
 );
@@ -574,9 +575,13 @@ CREATE TABLE pago (
   tipo_pago      	ENUM('anticipo','pago_parcial','pago_final','otro') NOT NULL,
   monto          	DECIMAL(12,2) NOT NULL,
   fecha_pago     	DATE NOT NULL,
-  metodo	    	ENUM('efectivo','transferencia','QR','otro') NOT NULL,
+  metodo	    	ENUM('efectivo','transferencia','QR','otro','stripe') NOT NULL,
   observacion    	TEXT,
+  stripe_payment_intent_id VARCHAR(100) NULL,
+  stripe_status  	VARCHAR(50) NULL,
   fecha_registro 	DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uk_pago_stripe_intent (stripe_payment_intent_id),
 
   CONSTRAINT fk_pago_proyecto FOREIGN KEY (id_proyecto) REFERENCES proyecto(id) ON DELETE CASCADE,
   CONSTRAINT fk_pago_usuario  FOREIGN KEY (id_usuario)  REFERENCES usuario(id)  ON DELETE RESTRICT,

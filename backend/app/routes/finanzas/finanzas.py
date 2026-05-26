@@ -144,10 +144,13 @@ def registrar_gasto():
 def eliminar_gasto(id_gasto):
     gasto = db.get_or_404(GastoOrden, id_gasto)
     id_usuario = int(get_jwt_identity())
-    log('ELIMINAR_GASTO', f"Gasto '{gasto.concepto}' de Bs {gasto.monto} en orden {gasto.id_orden} eliminado",
-        id_usuario=id_usuario, modulo='finanzas')
+    concepto  = gasto.concepto
+    monto_log = gasto.monto
+    id_orden  = gasto.id_orden
     db.session.delete(gasto)
     db.session.commit()
+    log('ELIMINAR_GASTO', f"Gasto '{concepto}' de Bs {monto_log} en orden {id_orden} eliminado",
+        id_usuario=id_usuario, modulo='finanzas')
     return jsonify({'ok': True})
 
 

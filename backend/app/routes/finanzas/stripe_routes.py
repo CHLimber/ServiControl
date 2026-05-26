@@ -54,6 +54,13 @@ def crear_payment_intent():
     except stripe.error.StripeError as e:
         return jsonify({'error': str(e)}), 400
 
+    log(
+        'STRIPE_INTENT',
+        f"PaymentIntent creado: {intent.id} | {data['tipo_pago']} Bs {monto} | proyecto {data['id_proyecto']}",
+        id_usuario=int(get_jwt_identity()),
+        modulo='finanzas',
+    )
+
     return jsonify({
         'client_secret': intent.client_secret,
         'payment_intent_id': intent.id,
@@ -158,5 +165,10 @@ def stripe_webhook():
         if pago and pago.stripe_status != 'succeeded':
             pago.stripe_status = 'succeeded'
             db.session.commit()
+            log(
+                'STRIPE_WEBHOOK',
+                f"Webhook: payment_intent.succeeded para {pi['id']} | pago id={pago.id}",
+                modulo='finanzas',
+            )
 
     return jsonify({'ok': True})
