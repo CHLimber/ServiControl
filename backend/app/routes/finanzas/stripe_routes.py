@@ -109,7 +109,7 @@ def completar_pago_stripe():
 
     log(
         'PAGO_STRIPE',
-        f"Pago Stripe {data['tipo_pago']} de USD {monto} para proyecto {data['id_proyecto']}",
+        f"Pago Stripe {data['tipo_pago']} de Bs {monto} para proyecto {data['id_proyecto']}",
         id_usuario=id_usuario,
         modulo='finanzas',
     )

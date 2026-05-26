@@ -132,7 +132,7 @@ function StripeForm({ proyectos, onSuccess, onClose }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Monto (USD) *</label>
+              <label className="form-label">Monto (Bs) *</label>
               <input
                 type="number" className="input" min="0.01" step="0.01"
                 value={form.monto} onChange={set('monto')}
@@ -182,7 +182,7 @@ function StripeForm({ proyectos, onSuccess, onClose }) {
                 fontSize: 12,
                 color: 'var(--info-text, #1d4ed8)',
               }}>
-                Los pagos se procesan en <strong>USD</strong> a través de Stripe con cifrado SSL.
+                Los pagos se procesan de forma segura a través de Stripe con cifrado SSL.
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-"""Generación automática de factura PDF tras un pago Stripe (CU42)."""
+"""Generación automática de factura PDF para cualquier método de pago (CU42)."""
 import os
 import uuid
 from datetime import date
@@ -44,7 +44,7 @@ def generar_y_guardar_factura(pago, id_usuario_registro, upload_folder):
         id_tipo_documento=tipo.id,
         nombre=f"Factura {numero} - {proyecto.codigo}",
         ruta=nombre_archivo,
-        descripcion=f"Pago Stripe {pago.stripe_payment_intent_id or ''} | {pago.tipo_pago}",
+        descripcion=f"Pago {pago.metodo} | {pago.tipo_pago}",
     )
     db.session.add(doc)
     db.session.commit()
@@ -112,8 +112,16 @@ def _generar_pdf(pago, proyecto, cliente, upload_folder):
         'pago_final': 'Pago Final',
         'otro': 'Otro',
     }
-    tipo_str  = tipo_labels.get(pago.tipo_pago, pago.tipo_pago)
-    monto_str = f"USD {float(pago.monto):.2f}"
+    metodo_labels = {
+        'efectivo': 'Efectivo',
+        'transferencia': 'Transferencia',
+        'QR': 'QR',
+        'stripe': 'Stripe',
+        'otro': 'Otro',
+    }
+    tipo_str   = tipo_labels.get(pago.tipo_pago, pago.tipo_pago)
+    metodo_str = metodo_labels.get(pago.metodo, pago.metodo)
+    monto_str  = f"Bs {float(pago.monto):.2f}"
 
     col = [100, 40, 40]   # widths: concepto, metodo, monto
 
@@ -130,7 +138,7 @@ def _generar_pdf(pago, proyecto, cliente, upload_folder):
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Helvetica', '', 10)
     pdf.cell(col[0], 9, f"  {tipo_str}", border='B', fill=True)
-    pdf.cell(col[1], 9, 'Stripe', border='B', fill=True, align='C')
+    pdf.cell(col[1], 9, metodo_str, border='B', fill=True, align='C')
     pdf.cell(col[2], 9, monto_str, border='B', fill=True, align='R', ln=True)
 
     # Fila de total
@@ -144,7 +152,7 @@ def _generar_pdf(pago, proyecto, cliente, upload_folder):
     # ── Referencia y observacion ────────────────────────────────────
     pdf.set_font('Helvetica', '', 8)
     pdf.set_text_color(100, 100, 100)
-    if pago.stripe_payment_intent_id:
+    if getattr(pago, 'stripe_payment_intent_id', None):
         pdf.cell(0, 5, f"Referencia Stripe: {pago.stripe_payment_intent_id}", ln=True)
     if pago.observacion:
         pdf.cell(0, 5, f"Observacion: {_safe(pago.observacion)}", ln=True)

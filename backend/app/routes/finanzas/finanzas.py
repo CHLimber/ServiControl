@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from decimal import Decimal
 from datetime import date, datetime
@@ -71,6 +71,13 @@ def registrar_pago():
     db.session.commit()
     log('REGISTRAR_PAGO', f"Pago {data['tipo_pago']} de Bs {monto} registrado para proyecto {data['id_proyecto']}",
         id_usuario=id_usuario, modulo='finanzas')
+
+    try:
+        from ...utils.factura import generar_y_guardar_factura
+        generar_y_guardar_factura(pago, id_usuario, current_app.config['UPLOAD_FOLDER'])
+    except Exception as exc:
+        current_app.logger.warning(f"No se pudo generar la factura PDF: {exc}")
+
     return jsonify(_serializar_pago(pago)), 201
 
 
