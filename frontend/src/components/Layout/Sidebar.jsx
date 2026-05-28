@@ -207,8 +207,13 @@ export default function Sidebar({ onClose }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <h2>Servi<span>Control</span></h2>
-        <p>Seguridad Electrónica</p>
+        <div className="sidebar-brand-logo">
+          <ShieldCheck size={20} />
+        </div>
+        <div className="sidebar-brand-text">
+          <h2>Servi<span>Control</span></h2>
+          <p>Seguridad Electrónica</p>
+        </div>
       </div>
 
       <nav className="sidebar-nav">

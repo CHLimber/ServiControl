@@ -1,6 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { useTheme } from '../../context/ThemeContext'
-import { Menu, Sun, Moon } from 'lucide-react'
+import { Menu } from 'lucide-react'
 
 const TITULOS = {
   '/':              ['Dashboard',          'Resumen general del sistema'],
@@ -22,7 +21,6 @@ const TITULOS = {
 }
 
 export default function Topbar({ onToggleSidebar }) {
-  const { tema, toggleTema } = useTheme()
   const { pathname } = useLocation()
   const [titulo, subtitulo] = TITULOS[pathname] || ['ServiControl', '']
 
@@ -36,10 +34,6 @@ export default function Topbar({ onToggleSidebar }) {
         {titulo}
         {subtitulo && <span className="topbar-subtitle">— {subtitulo}</span>}
       </div>
-
-      <button className="theme-toggle" onClick={toggleTema} title="Cambiar tema">
-        {tema === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-      </button>
     </header>
   )
 }

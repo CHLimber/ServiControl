@@ -6,11 +6,14 @@ import { finanzasApi } from '../../api/finanzas'
 import { Eye, RefreshCw, Pencil, Star, Users, Package, X, Check, DollarSign, Trash2, Plus } from 'lucide-react'
 
 const BADGE_ESTADO = {
-  'Pendiente':   'badge-gray',
-  'Asignada':    'badge-blue',
-  'En proceso':  'badge-yellow',
-  'Completada':  'badge-green',
-  'Cancelada':   'badge-red',
+  'Creada':     'badge-gray',
+  'Asignada':   'badge-blue',
+  'En Camino':  'badge-purple',
+  'Iniciada':   'badge-orange',
+  'En Pausa':   'badge-yellow',
+  'Completada': 'badge-green',
+  'Validada':   'badge-green',
+  'Cancelada':  'badge-red',
 }
 
 function formatFecha(iso) {

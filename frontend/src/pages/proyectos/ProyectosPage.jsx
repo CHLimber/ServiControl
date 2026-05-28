@@ -6,11 +6,16 @@ import { cotizacionesApi } from '../../api/cotizaciones'
 import { Eye, RefreshCw, X, Paperclip, ExternalLink, Trash2 } from 'lucide-react'
 
 const BADGE_ESTADO = {
-  'Planificación':  'badge-gray',
-  'En ejecución':   'badge-blue',
-  'Pausado':        'badge-yellow',
-  'Finalizado':     'badge-green',
-  'Cancelado':      'badge-red',
+  'Levantamiento': 'badge-gray',
+  'Cotizado':      'badge-purple',
+  'Aprobado':      'badge-blue',
+  'En Ejecución':  'badge-orange',
+  'Detenido':      'badge-yellow',
+  'Bloqueado':     'badge-red',
+  'Completado':    'badge-green',
+  'En Garantía':   'badge-green',
+  'Cerrado':       'badge-gray',
+  'Cancelado':     'badge-red',
 }
 
 function formatFecha(iso) {
