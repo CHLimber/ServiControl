@@ -1,34 +1,22 @@
-import { Building2, Wrench, FileText, Hammer, TrendingUp, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Building2, Wrench, FileText, Hammer, TrendingUp, Users, AlertCircle, RefreshCw } from 'lucide-react'
 import { formatBs } from '../../utils'
-
-const STATS = [
-  { icon: <Building2 size={20} />, color: 'blue',   valor: 12,         label: 'Proyectos activos',     delta: '+2 este mes',     tipo: 'up' },
-  { icon: <Wrench size={20} />,   color: 'yellow', valor: 8,          label: 'OT pendientes',          delta: '3 vencidas',      tipo: 'down' },
-  { icon: <FileText size={20} />, color: 'purple', valor: 5,          label: 'Cotizaciones en espera', delta: '+1 hoy',          tipo: 'up' },
-  { icon: <Hammer size={20} />,   color: 'green',  valor: 3,          label: 'Mantenimientos próximos',delta: 'Esta semana',     tipo: 'up' },
-  { icon: <TrendingUp size={20} />,color: 'green', valor: 'Bs 42.800',label: 'Cobrado este mes',       delta: '+18% vs anterior',tipo: 'up' },
-  { icon: <Users size={20} />,    color: 'blue',   valor: 47,         label: 'Clientes registrados',   delta: '+4 este mes',     tipo: 'up' },
-]
-
-const PROYECTOS_RECIENTES = [
-  { id: 1, nombre: 'CCTV Edificio Los Pinos',    cliente: 'Importadora Rojas SRL', estado: 'En ejecución', monto: 18500, avance: 65 },
-  { id: 2, nombre: 'Cerco eléctrico Urb. Norte', cliente: 'Carlos Méndez Ríos',    estado: 'Planificación', monto: 7200,  avance: 10 },
-  { id: 3, nombre: 'Control acceso ENERSOL',     cliente: 'ENERSOL SA',            estado: 'En ejecución', monto: 31000, avance: 40 },
-  { id: 4, nombre: 'Alarma residencia Piraí',    cliente: 'Lucía Vargas Pedraza',  estado: 'Finalizado',   monto: 4800,  avance: 100 },
-]
-
-const OT_RECIENTES = [
-  { id: 101, titulo: 'Revisión cámaras piso 3',    tecnico: 'Juan Torrez',    prioridad: 'alta',   estado: 'Asignada' },
-  { id: 102, titulo: 'Mantenimiento DVR principal', tecnico: 'Mario Aguilar', prioridad: 'media',  estado: 'En proceso' },
-  { id: 103, titulo: 'Cambio sensor puerta 2',      tecnico: 'Juan Torrez',   prioridad: 'baja',   estado: 'Asignada' },
-  { id: 104, titulo: 'Instalación teclado acceso',  tecnico: 'Luis Pedraza',  prioridad: 'urgente',estado: 'Pendiente' },
-]
+import { dashboardApi } from '../../api/dashboard'
 
 const BADGE_ESTADO = {
-  'En ejecución': 'badge-blue',
-  'Planificación': 'badge-yellow',
-  'Finalizado':   'badge-green',
-  'Pausado':      'badge-gray',
+  'Levantamiento': 'badge-gray',
+  'Cotizado':      'badge-purple',
+  'Aprobado':      'badge-blue',
+  'En Ejecución':  'badge-orange',
+  'En Ejecucion':  'badge-orange',
+  'Detenido':      'badge-yellow',
+  'Bloqueado':     'badge-red',
+  'Completado':    'badge-green',
+  'En Garantía':   'badge-green',
+  'En Garantia':   'badge-green',
+  'Cerrado':       'badge-gray',
+  'Cancelado':     'badge-red',
 }
 
 const BADGE_PRIORIDAD = {
@@ -39,19 +27,121 @@ const BADGE_PRIORIDAD = {
 }
 
 const BADGE_OT = {
+  'Creada':     'badge-gray',
   'Asignada':   'badge-blue',
-  'En proceso': 'badge-yellow',
-  'Pendiente':  'badge-gray',
+  'En Camino':  'badge-purple',
+  'Iniciada':   'badge-orange',
+  'En Pausa':   'badge-yellow',
   'Completada': 'badge-green',
+  'Validada':   'badge-green',
+  'Cancelada':  'badge-red',
+}
+
+function buildStats(data) {
+  const s = data?.stats || {}
+  const cobrado = s.cobrado_mes ?? 0
+  const deltaPct = s.cobrado_delta_pct ?? 0
+  const deltaCobrado = deltaPct === 0
+    ? 'Sin movimientos previos'
+    : `${deltaPct > 0 ? '+' : ''}${deltaPct}% vs mes anterior`
+
+  return [
+    {
+      icon: <Building2 size={20} />, color: 'blue',
+      valor: s.proyectos_activos ?? 0,
+      label: 'Proyectos activos',
+      delta: `${s.proyectos_nuevos_mes ?? 0} este mes`,
+      tipo: 'up',
+    },
+    {
+      icon: <Wrench size={20} />, color: 'yellow',
+      valor: s.ot_pendientes ?? 0,
+      label: 'OT pendientes',
+      delta: (s.ot_vencidas ?? 0) > 0 ? `${s.ot_vencidas} vencidas` : 'Al día',
+      tipo: (s.ot_vencidas ?? 0) > 0 ? 'down' : 'up',
+    },
+    {
+      icon: <FileText size={20} />, color: 'purple',
+      valor: s.cotizaciones_espera ?? 0,
+      label: 'Cotizaciones en espera',
+      delta: `${s.cotizaciones_nuevas_hoy ?? 0} hoy`,
+      tipo: 'up',
+    },
+    {
+      icon: <Hammer size={20} />, color: 'green',
+      valor: s.mantenimientos_proximos ?? 0,
+      label: 'Mantenimientos próximos',
+      delta: 'Próximos 7 días',
+      tipo: 'up',
+    },
+    {
+      icon: <TrendingUp size={20} />, color: 'green',
+      valor: formatBs(cobrado),
+      label: 'Cobrado este mes',
+      delta: deltaCobrado,
+      tipo: deltaPct >= 0 ? 'up' : 'down',
+    },
+    {
+      icon: <Users size={20} />, color: 'blue',
+      valor: s.clientes_total ?? 0,
+      label: 'Clientes registrados',
+      delta: `+${s.clientes_nuevos_mes ?? 0} este mes`,
+      tipo: 'up',
+    },
+  ]
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
+  const [data, setData] = useState(null)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
+
+  const cargar = async () => {
+    setCargando(true)
+    setError('')
+    try {
+      const res = await dashboardApi.resumen()
+      setData(res)
+    } catch (e) {
+      setError(e?.error || 'No se pudo cargar el dashboard')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  useEffect(() => { cargar() }, [])
+
+  if (cargando && !data) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 48 }}>
+        <div className="text-muted">Cargando dashboard…</div>
+      </div>
+    )
+  }
+
+  if (error && !data) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: 48 }}>
+        <AlertCircle size={32} style={{ color: 'var(--danger)', marginBottom: 12 }} />
+        <div style={{ marginBottom: 16 }}>{error}</div>
+        <button className="btn btn-primary btn-sm" onClick={cargar}>
+          <RefreshCw size={14} /> Reintentar
+        </button>
+      </div>
+    )
+  }
+
+  const stats = buildStats(data)
+  const proyectos = data?.proyectos_recientes || []
+  const ordenes = data?.ordenes_recientes || []
+
   return (
     <>
       {/* Stats */}
       <div className="stats-grid">
-        {STATS.map((s, i) => (
-          <div key={i} className="stat-card">
+        {stats.map((s, i) => (
+          <div key={i} className={`stat-card ${s.color}`}>
             <div className={`stat-icon ${s.color}`}>{s.icon}</div>
             <div className="stat-info">
               <div className="stat-value">{s.valor}</div>
@@ -68,7 +158,12 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <span className="card-title">Proyectos recientes</span>
-            <button className="btn btn-ghost btn-sm">Ver todos</button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/proyectos')}
+            >
+              Ver todos
+            </button>
           </div>
           <div className="table-wrap">
             <table>
@@ -81,7 +176,12 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {PROYECTOS_RECIENTES.map(p => (
+                {proyectos.length === 0 && (
+                  <tr><td colSpan={4} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                    Sin proyectos registrados
+                  </td></tr>
+                )}
+                {proyectos.map(p => (
                   <tr key={p.id}>
                     <td>
                       <div style={{ fontWeight: 500 }}>{p.nombre}</div>
@@ -107,7 +207,7 @@ export default function DashboardPage() {
                         <span className="text-sm text-muted">{p.avance}%</span>
                       </div>
                     </td>
-                    <td className="text-sm">{formatBs(p.monto)}</td>
+                    <td className="text-sm">{p.monto ? formatBs(p.monto) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -119,7 +219,12 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <span className="card-title">Órdenes de trabajo</span>
-            <button className="btn btn-ghost btn-sm">Ver todas</button>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/ordenes')}
+            >
+              Ver todas
+            </button>
           </div>
           <div className="table-wrap">
             <table>
@@ -132,15 +237,20 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {OT_RECIENTES.map(o => (
+                {ordenes.length === 0 && (
+                  <tr><td colSpan={4} className="text-muted text-sm" style={{ textAlign: 'center', padding: 16 }}>
+                    Sin órdenes registradas
+                  </td></tr>
+                )}
+                {ordenes.map(o => (
                   <tr key={o.id}>
-                    <td className="text-muted text-sm">{o.id}</td>
+                    <td className="text-muted text-sm">{o.codigo}</td>
                     <td>
                       <div style={{ fontWeight: 500 }}>{o.titulo}</div>
                       <div className="text-muted text-sm">{o.tecnico}</div>
                     </td>
                     <td>
-                      <span className={`badge ${BADGE_PRIORIDAD[o.prioridad]}`}>
+                      <span className={`badge ${BADGE_PRIORIDAD[o.prioridad] || 'badge-gray'}`}>
                         {o.prioridad}
                       </span>
                     </td>

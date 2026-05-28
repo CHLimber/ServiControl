@@ -40,6 +40,7 @@ def create_app(env: str = None):
     from .routes.notificaciones.notificaciones import bp as notificaciones_bp
     from .routes.auditoria.auditoria  import bp as auditoria_bp
     from .routes.empleados.empleados  import bp as empleados_bp
+    from .routes.dashboard.dashboard  import bp as dashboard_bp
 
     app.register_blueprint(auth_bp,          url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp,      url_prefix='/api/usuarios')
@@ -59,5 +60,6 @@ def create_app(env: str = None):
     app.register_blueprint(notificaciones_bp,url_prefix='/api/notificaciones')
     app.register_blueprint(auditoria_bp,     url_prefix='/api/auditoria')
     app.register_blueprint(empleados_bp,     url_prefix='/api/empleados')
+    app.register_blueprint(dashboard_bp,     url_prefix='/api/dashboard')
 
     return app
