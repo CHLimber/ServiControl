@@ -54,6 +54,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    MAIL_DEBUG = False
 
 
 class ProductionConfig(Config):
