@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { proyectosApi } from '../../api/proyectos'
 import { ordenesApi } from '../../api/ordenes'
 import { finanzasApi } from '../../api/finanzas'
+import { useAuth } from '../../context/AuthContext'
 import { TrendingUp, TrendingDown, Clock, BarChart3, CheckCircle, X, Trash2, CreditCard } from 'lucide-react'
 import PagoStripeModal from '../../components/PagoStripeModal'
 
@@ -29,6 +30,8 @@ const FORM_PAGO_VACIO  = { id_proyecto: '', tipo_pago: 'anticipo', monto: '', fe
 const FORM_GASTO_VACIO = { id_orden: '', concepto: 'materiales', monto: '', fecha_gasto: '', descripcion: '' }
 
 export default function FinanzasPage() {
+  const { puede } = useAuth()
+  const puedeGestionar = puede('gestionar_finanzas')
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -154,18 +157,20 @@ export default function FinanzasPage() {
            : 'Pagos — ingresos registrados por proyecto'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-ghost" onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
-            + Gasto
-          </button>
-          <button className="btn btn-ghost" onClick={() => setModalStripe(true)} title="Procesar pago con tarjeta via Stripe">
-            <CreditCard size={14} style={{ marginRight: 4 }} />
-            Stripe
-          </button>
-          <button className="btn btn-primary" onClick={() => { setErrPago(''); setFormPago(FORM_PAGO_VACIO); setModalPago(true) }}>
-            + Registrar pago
-          </button>
-        </div>
+        {puedeGestionar && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
+              + Gasto
+            </button>
+            <button className="btn btn-ghost" onClick={() => setModalStripe(true)} title="Procesar pago con tarjeta via Stripe">
+              <CreditCard size={14} style={{ marginRight: 4 }} />
+              Stripe
+            </button>
+            <button className="btn btn-primary" onClick={() => { setErrPago(''); setFormPago(FORM_PAGO_VACIO); setModalPago(true) }}>
+              + Registrar pago
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Resumen */}
@@ -249,12 +254,14 @@ export default function FinanzasPage() {
       {/* Tab: Gastos */}
       {tab === 'gastos' && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-            <button className="btn btn-ghost btn-sm"
-              onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
-              + Registrar gasto
-            </button>
-          </div>
+          {puedeGestionar && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button className="btn btn-ghost btn-sm"
+                onClick={() => { setErrGasto(''); setFormGasto(FORM_GASTO_VACIO); setModalGasto(true) }}>
+                + Registrar gasto
+              </button>
+            </div>
+          )}
           {cargando ? <div className="empty-state">Cargando...</div> :
            gastos.length === 0 ? <div className="empty-state">No hay gastos registrados.</div> : (
             <div className="table-wrap">
@@ -280,11 +287,13 @@ export default function FinanzasPage() {
                       <td className="text-sm text-muted">{formatFecha(g.fecha_gasto)}</td>
                       <td className="text-sm text-muted">{g.usuario || '—'}</td>
                       <td>
-                        <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
-                          style={{ color: 'var(--danger)' }}
-                          onClick={() => eliminarGasto(g)}>
-                          <Trash2 size={13} />
-                        </button>
+                        {puedeGestionar && (
+                          <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
+                            style={{ color: 'var(--danger)' }}
+                            onClick={() => eliminarGasto(g)}>
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

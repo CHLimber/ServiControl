@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { AlertTriangle, RefreshCw, Plus, X, Eye } from 'lucide-react'
 import { mantenimientoApi } from '../../api/mantenimiento'
 import { catalogosApi } from '../../api/catalogos'
+import { useAuth } from '../../context/AuthContext'
 
 const ESTADOS_ALERTA = ['pendiente', 'enviada', 'leida', 'completada']
 const ESTADOS_MANT   = ['pendiente', 'confirmado', 'reprogramado', 'completado', 'vencido']
@@ -45,6 +46,8 @@ const FORM_ALERTA_VACIO = {
 }
 
 export default function AlertasMantenimientoPage() {
+  const { puede } = useAuth()
+  const puedeGestionar = puede('gestionar_mantenimientos')
   const [alertas, setAlertas]         = useState([])
   const [mantenimientos, setMants]    = useState([])
   const [sistemas, setSistemas]       = useState([])
@@ -167,11 +170,13 @@ export default function AlertasMantenimientoPage() {
           <h1 className="page-title">Alertas de mantenimiento</h1>
           <p className="page-subtitle">Alertas pendientes de sistemas con mantenimiento vencido o próximo</p>
         </div>
-        <button className="btn btn-primary"
-          onClick={() => { setForm(FORM_ALERTA_VACIO); setErrForm(''); setModalCrear(true) }}>
-          <Plus size={16} style={{ marginRight: 6 }} />
-          Nueva alerta
-        </button>
+        {puedeGestionar && (
+          <button className="btn btn-primary"
+            onClick={() => { setForm(FORM_ALERTA_VACIO); setErrForm(''); setModalCrear(true) }}>
+            <Plus size={16} style={{ marginRight: 6 }} />
+            Nueva alerta
+          </button>
+        )}
       </div>
 
       {/* Resumen */}
@@ -253,10 +258,12 @@ export default function AlertasMantenimientoPage() {
                           onClick={() => setModalDetalle(a)}>
                           <Eye size={14} />
                         </button>
-                        <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => { setModalEstado(a); setNuevoEstado(''); setNuevaObs(a.observacion || '') }}>
-                          <RefreshCw size={14} />
-                        </button>
+                        {puedeGestionar && (
+                          <button className="btn btn-ghost btn-sm" title="Cambiar estado"
+                            onClick={() => { setModalEstado(a); setNuevoEstado(''); setNuevaObs(a.observacion || '') }}>
+                            <RefreshCw size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -306,10 +313,12 @@ export default function AlertasMantenimientoPage() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setModalDetalle(null)}>Cerrar</button>
-              <button className="btn btn-primary"
-                onClick={() => { setModalEstado(modalDetalle); setNuevoEstado(''); setNuevaObs(modalDetalle.observacion || ''); setModalDetalle(null) }}>
-                Cambiar estado
-              </button>
+              {puedeGestionar && (
+                <button className="btn btn-primary"
+                  onClick={() => { setModalEstado(modalDetalle); setNuevoEstado(''); setNuevaObs(modalDetalle.observacion || ''); setModalDetalle(null) }}>
+                  Cambiar estado
+                </button>
+              )}
             </div>
           </div>
         </div>

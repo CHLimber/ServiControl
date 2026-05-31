@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { entidadesApi } from '../../api/entidades'
+import { useAuth } from '../../context/AuthContext'
 import { Users, NotebookPen } from 'lucide-react'
 
 function formatFechaHora(iso) {
@@ -8,6 +9,8 @@ function formatFechaHora(iso) {
 }
 
 export default function BitacorasClientePage() {
+  const { puede } = useAuth()
+  const puedeEditar = puede('editar_clientes')
   const [clientes, setClientes]             = useState([])
   const [clienteSel, setClienteSel]         = useState(null)
   const [notas, setNotas]                   = useState([])
@@ -138,28 +141,30 @@ export default function BitacorasClientePage() {
               </span>
             </div>
 
-            {/* Formulario nueva nota */}
-            <form onSubmit={guardarNota} style={{ marginBottom: 24 }}>
-              <div className="form-group">
-                <label className="form-label">Nueva nota</label>
-                <textarea
-                  className="input"
-                  rows={3}
-                  value={nuevaNota}
-                  onChange={e => setNuevaNota(e.target.value)}
-                  placeholder="Escribí una observación sobre este cliente..."
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  disabled={guardandoNota || !nuevaNota.trim()}
-                >
-                  {guardandoNota ? 'Guardando...' : '+ Agregar nota'}
-                </button>
-              </div>
-            </form>
+            {/* Formulario nueva nota — solo si puede editar clientes */}
+            {puedeEditar && (
+              <form onSubmit={guardarNota} style={{ marginBottom: 24 }}>
+                <div className="form-group">
+                  <label className="form-label">Nueva nota</label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={nuevaNota}
+                    onChange={e => setNuevaNota(e.target.value)}
+                    placeholder="Escribí una observación sobre este cliente..."
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={guardandoNota || !nuevaNota.trim()}
+                  >
+                    {guardandoNota ? 'Guardando...' : '+ Agregar nota'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Listado de notas */}
             <div style={{ fontWeight: 600, marginBottom: 12 }}>

@@ -6,11 +6,21 @@ from flask_jwt_extended import (
 from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash, generate_password_hash
 from ...extensions import db
-from ...models.seguridad.auth import Usuario
+from ...models.seguridad.auth import Usuario, Permiso, RolPermiso
 from ...utils.bitacora import log
 from ...utils import correo
 
 bp = Blueprint('auth', __name__)
+
+
+def _permisos_de(usuario: Usuario) -> list[str]:
+    rows = (
+        db.session.query(Permiso.nombre)
+        .join(RolPermiso, RolPermiso.id_permiso == Permiso.id)
+        .filter(RolPermiso.id_rol == usuario.id_rol)
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 def _minutos_bloqueo(veces_bloqueado: int) -> int:
@@ -85,6 +95,7 @@ def login():
             'id': usuario.id,
             'username': usuario.username,
             'rol': usuario.rol.nombre,
+            'permisos': _permisos_de(usuario),
         }
     })
 
@@ -117,6 +128,7 @@ def me():
         'id': usuario.id,
         'username': usuario.username,
         'rol': usuario.rol.nombre,
+        'permisos': _permisos_de(usuario),
     })
 
 

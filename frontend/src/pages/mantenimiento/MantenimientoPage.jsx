@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { catalogosApi } from '../../api/catalogos'
+import { useAuth } from '../../context/AuthContext'
 import { RefreshCw, X } from 'lucide-react'
 
 const ESTADOS  = ['pendiente', 'confirmado', 'reprogramado', 'completado', 'vencido']
@@ -37,6 +38,8 @@ const FORM_VACIO = {
 }
 
 export default function MantenimientoPage() {
+  const { puede } = useAuth()
+  const puedeGestionar = puede('gestionar_mantenimientos')
   const [lista, setLista]           = useState([])
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState(null)
@@ -128,9 +131,11 @@ export default function MantenimientoPage() {
           <h1 className="page-title">Mantenimiento</h1>
           <p className="page-subtitle">Mantenimientos preventivos y correctivos</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setForm(FORM_VACIO); setErrForm(''); setModalCrear(true) }}>
-          + Programar mantenimiento
-        </button>
+        {puedeGestionar && (
+          <button className="btn btn-primary" onClick={() => { setForm(FORM_VACIO); setErrForm(''); setModalCrear(true) }}>
+            + Programar mantenimiento
+          </button>
+        )}
       </div>
 
       {/* Resumen rápido */}
@@ -191,10 +196,12 @@ export default function MantenimientoPage() {
                       {m.periodicidad_dias ? `Cada ${m.periodicidad_dias} días` : '—'}
                     </td>
                     <td>
-                      <button className="btn btn-ghost btn-sm"
-                        onClick={() => { setModalEstado(m); setNuevoEstado(''); setNuevaFecha('') }}>
-                        <RefreshCw size={14} />
-                      </button>
+                      {puedeGestionar && (
+                        <button className="btn btn-ghost btn-sm"
+                          onClick={() => { setModalEstado(m); setNuevoEstado(''); setNuevaFecha('') }}>
+                          <RefreshCw size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

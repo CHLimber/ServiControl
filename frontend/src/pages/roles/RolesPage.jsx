@@ -26,6 +26,7 @@ const ORDEN_MODULOS = [
   ['finanzas',       'Finanzas'],
   ['mantenimientos', 'Mantenimientos'],
   ['reportes',       'Reportes'],
+  ['empleados',      'Empleados'],
   ['usuarios',       'Usuarios'],
   ['catalogo',       'Catálogo'],
   ['roles',          'Roles y permisos'],

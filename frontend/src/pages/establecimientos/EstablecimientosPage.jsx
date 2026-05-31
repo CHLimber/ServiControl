@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
+import { useAuth } from '../../context/AuthContext'
 import { Pencil, Trash2, X, MapPin } from 'lucide-react'
 
 const FORM_VACIO = {
@@ -16,6 +17,9 @@ function formatFecha(iso) {
 }
 
 export default function EstablecimientosPage() {
+  const { puede } = useAuth()
+  const puedeCrear  = puede('crear_clientes')
+  const puedeEditar = puede('editar_clientes')
   const [establecimientos, setEstablecimientos] = useState([])
   const [clientes, setClientes]                 = useState([])
   const [tiposEst, setTiposEst]                 = useState([])
@@ -125,7 +129,9 @@ export default function EstablecimientosPage() {
           <h1 className="page-title">Establecimientos</h1>
           <p className="page-subtitle">Ubicaciones físicas registradas por cliente</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo establecimiento</button>
+        {puedeCrear && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo establecimiento</button>
+        )}
       </div>
 
       {/* Filtro */}
@@ -176,21 +182,25 @@ export default function EstablecimientosPage() {
                     <td className="text-sm text-muted">{formatFecha(est.fecha_creacion)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => abrirEditar(est)}
-                          title="Editar"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => desactivar(est.id, est.nombre_cliente)}
-                          title="Desactivar"
-                          style={{ color: 'var(--danger)' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {puedeEditar && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => abrirEditar(est)}
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {puedeEditar && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => desactivar(est.id, est.nombre_cliente)}
+                            title="Desactivar"
+                            style={{ color: 'var(--danger)' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

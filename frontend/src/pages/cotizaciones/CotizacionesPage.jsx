@@ -3,6 +3,7 @@ import { cotizacionesApi } from '../../api/cotizaciones'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { productosApi } from '../../api/productos'
+import { useAuth } from '../../context/AuthContext'
 import { Eye, Pencil, X, FolderOpen } from 'lucide-react'
 
 const ESTADOS = ['borrador', 'enviada', 'aprobada', 'rechazada', 'vencida', 'convertida']
@@ -23,6 +24,9 @@ function formatBs(n) {
 }
 
 export default function CotizacionesPage({ abrirCrearInicial = false }) {
+  const { puede } = useAuth()
+  const puedeCrear     = puede('crear_cotizaciones')
+  const puedeConvertir = puede('crear_proyectos')
   const [cotizaciones, setCotizaciones] = useState([])
   const [cargando, setCargando]         = useState(true)
   const [error, setError]               = useState(null)
@@ -69,7 +73,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
 
   useEffect(() => {
     cargarCotizaciones()
-    if (abrirCrearInicial) setModalCrear(true)
+    if (abrirCrearInicial && puedeCrear) setModalCrear(true)
   }, [])
 
   async function cargarCotizaciones() {
@@ -313,7 +317,9 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
           <h1 className="page-title">Cotizaciones</h1>
           <p className="page-subtitle">Propuestas comerciales a clientes</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva cotización</button>
+        {puedeCrear && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva cotización</button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -425,7 +431,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                     <div style={{ fontWeight: 700, fontSize: '1.1rem', marginTop: 4 }}>Total: {formatBs(detalle.total)}</div>
                   </div>
                 </div>
-                {detalle.estado === 'borrador' && (
+                {detalle.estado === 'borrador' && puedeCrear && (
                   <div className="modal-footer">
                     <button className="btn btn-ghost" onClick={() => abrirEditar(detalle)}>
                       <Pencil size={14} style={{ marginRight: 6 }} />Editar
@@ -439,7 +445,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                     </button>
                   </div>
                 )}
-                {detalle.estado === 'enviada' && (
+                {detalle.estado === 'enviada' && puedeCrear && (
                   <div className="modal-footer">
                     <button className="btn btn-primary" onClick={() => cambiarEstado(detalle.id, 'aprobada')}>
                       Aprobar
@@ -450,7 +456,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                     </button>
                   </div>
                 )}
-                {detalle.estado === 'aprobada' && (
+                {detalle.estado === 'aprobada' && puedeConvertir && (
                   <div className="modal-footer">
                     <button className="btn btn-primary" onClick={() => abrirConvertir(detalle)}>
                       <FolderOpen size={14} style={{ marginRight: 6 }} />Convertir en Proyecto

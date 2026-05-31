@@ -32,9 +32,29 @@ import EmpleadosPage       from './pages/empleados/EmpleadosPage'
 import PerfilPage          from './pages/perfil/PerfilPage'
 import ModuloPlaceholder   from './pages/ModuloPlaceholder'
 
-function RutaProtegida({ children }) {
-  const { token } = useAuth()
-  return token ? <Layout>{children}</Layout> : <Navigate to="/login" replace />
+function RutaProtegida({ children, permisos, crearPermiso }) {
+  const { token, puedeAlguno } = useAuth()
+  if (!token) return <Navigate to="/login" replace />
+
+  if (permisos && permisos.length > 0 && !puedeAlguno(...permisos)) {
+    return <Layout><SinAcceso /></Layout>
+  }
+  // Si la ruta es de "creación rápida" (abrirCrearInicial) y el usuario no tiene
+  // permiso para crear, redirigimos al listado en vez de abrir el modal.
+  if (crearPermiso && !puedeAlguno(crearPermiso)) {
+    return <Layout>{children}</Layout>  // se renderiza la página sin el flag, pero
+    // los hijos ya filtran. Para simplificar, dejamos que la página gestione.
+  }
+  return <Layout>{children}</Layout>
+}
+
+function SinAcceso() {
+  return (
+    <div className="empty-state" style={{ padding: 40 }}>
+      <h2 style={{ marginBottom: 8 }}>Sin acceso</h2>
+      <p>Tu rol no tiene permiso para ver esta sección.</p>
+    </div>
+  )
 }
 
 function P(nombre, descripcion, icon) {
@@ -50,60 +70,60 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Principal */}
+      {/* Principal — visible para todos los autenticados */}
       <Route path="/" element={<RutaProtegida><DashboardPage /></RutaProtegida>} />
 
       {/* Comercial — Clientes */}
-      <Route path="/clientes"                  element={<RutaProtegida><EntidadesPage /></RutaProtegida>} />
-      <Route path="/clientes/nuevo"            element={<RutaProtegida><EntidadesPage abrirCrearInicial /></RutaProtegida>} />
-      <Route path="/clientes/establecimientos" element={<RutaProtegida><EstablecimientosPage /></RutaProtegida>} />
-      <Route path="/clientes/sistemas"         element={<RutaProtegida><SistemasPage /></RutaProtegida>} />
+      <Route path="/clientes"                  element={<RutaProtegida permisos={['ver_clientes']}><EntidadesPage /></RutaProtegida>} />
+      <Route path="/clientes/nuevo"            element={<RutaProtegida permisos={['crear_clientes']}><EntidadesPage abrirCrearInicial /></RutaProtegida>} />
+      <Route path="/clientes/establecimientos" element={<RutaProtegida permisos={['ver_clientes']}><EstablecimientosPage /></RutaProtegida>} />
+      <Route path="/clientes/sistemas"         element={<RutaProtegida permisos={['ver_clientes']}><SistemasPage /></RutaProtegida>} />
 
       {/* Comercial — Cotizaciones */}
-      <Route path="/cotizaciones"       element={<RutaProtegida><CotizacionesPage /></RutaProtegida>} />
-      <Route path="/cotizaciones/nueva" element={<RutaProtegida><CotizacionesPage abrirCrearInicial /></RutaProtegida>} />
+      <Route path="/cotizaciones"       element={<RutaProtegida permisos={['ver_cotizaciones']}><CotizacionesPage /></RutaProtegida>} />
+      <Route path="/cotizaciones/nueva" element={<RutaProtegida permisos={['crear_cotizaciones']}><CotizacionesPage abrirCrearInicial /></RutaProtegida>} />
 
       {/* Operaciones — Proyectos */}
-      <Route path="/proyectos"       element={<RutaProtegida><ProyectosPage /></RutaProtegida>} />
-      <Route path="/proyectos/nuevo" element={<RutaProtegida><ProyectosPage abrirCrearInicial /></RutaProtegida>} />
+      <Route path="/proyectos"       element={<RutaProtegida permisos={['ver_proyectos']}><ProyectosPage /></RutaProtegida>} />
+      <Route path="/proyectos/nuevo" element={<RutaProtegida permisos={['crear_proyectos']}><ProyectosPage abrirCrearInicial /></RutaProtegida>} />
 
       {/* Operaciones — Órdenes de trabajo */}
-      <Route path="/ordenes"       element={<RutaProtegida><OrdenesPage /></RutaProtegida>} />
-      <Route path="/ordenes/nueva" element={<RutaProtegida><OrdenesPage abrirCrearInicial /></RutaProtegida>} />
+      <Route path="/ordenes"       element={<RutaProtegida permisos={['ver_ordenes']}><OrdenesPage /></RutaProtegida>} />
+      <Route path="/ordenes/nueva" element={<RutaProtegida permisos={['crear_ordenes']}><OrdenesPage abrirCrearInicial /></RutaProtegida>} />
 
       {/* Operaciones — Mantenimiento */}
-      <Route path="/mantenimiento"         element={<RutaProtegida><MantenimientoPage /></RutaProtegida>} />
-      <Route path="/mantenimiento/alertas" element={<RutaProtegida><AlertasMantenimientoPage /></RutaProtegida>} />
+      <Route path="/mantenimiento"         element={<RutaProtegida permisos={['ver_mantenimientos', 'gestionar_mantenimientos']}><MantenimientoPage /></RutaProtegida>} />
+      <Route path="/mantenimiento/alertas" element={<RutaProtegida permisos={['ver_mantenimientos', 'gestionar_mantenimientos']}><AlertasMantenimientoPage /></RutaProtegida>} />
 
       {/* Finanzas */}
-      <Route path="/finanzas/pago"    element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
-      <Route path="/finanzas/gastos"  element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
-      <Route path="/finanzas/cuentas" element={<RutaProtegida><FinanzasPage /></RutaProtegida>} />
-      <Route path="/finanzas/reporte" element={<RutaProtegida><ReporteFinancieroPage /></RutaProtegida>} />
+      <Route path="/finanzas/pago"    element={<RutaProtegida permisos={['gestionar_finanzas']}><FinanzasPage /></RutaProtegida>} />
+      <Route path="/finanzas/gastos"  element={<RutaProtegida permisos={['gestionar_finanzas']}><FinanzasPage /></RutaProtegida>} />
+      <Route path="/finanzas/cuentas" element={<RutaProtegida permisos={['ver_finanzas']}><FinanzasPage /></RutaProtegida>} />
+      <Route path="/finanzas/reporte" element={<RutaProtegida permisos={['ver_finanzas']}><ReporteFinancieroPage /></RutaProtegida>} />
 
       {/* Registros — Bitácoras */}
-      <Route path="/bitacoras/cliente"    element={<RutaProtegida><BitacorasClientePage /></RutaProtegida>} />
-      <Route path="/bitacoras/proyecto"   element={<RutaProtegida><BitacorasProyectoPage /></RutaProtegida>} />
-      <Route path="/bitacoras/documentos" element={<RutaProtegida><DocumentosPage /></RutaProtegida>} />
+      <Route path="/bitacoras/cliente"    element={<RutaProtegida permisos={['ver_clientes']}><BitacorasClientePage /></RutaProtegida>} />
+      <Route path="/bitacoras/proyecto"   element={<RutaProtegida permisos={['ver_proyectos']}><BitacorasProyectoPage /></RutaProtegida>} />
+      <Route path="/bitacoras/documentos" element={<RutaProtegida permisos={['ver_clientes', 'ver_proyectos']}><DocumentosPage /></RutaProtegida>} />
 
       {/* Configuración — Personal */}
-      <Route path="/personal/empleados" element={<RutaProtegida><EmpleadosPage /></RutaProtegida>} />
-      <Route path="/personal/usuarios"  element={<RutaProtegida><UsuariosPage /></RutaProtegida>} />
-      <Route path="/personal/roles"     element={<RutaProtegida><RolesPage /></RutaProtegida>} />
+      <Route path="/personal/empleados" element={<RutaProtegida permisos={['gestionar_empleados']}><EmpleadosPage /></RutaProtegida>} />
+      <Route path="/personal/usuarios"  element={<RutaProtegida permisos={['gestionar_usuarios']}><UsuariosPage /></RutaProtegida>} />
+      <Route path="/personal/roles"     element={<RutaProtegida permisos={['gestionar_roles']}><RolesPage /></RutaProtegida>} />
 
       {/* Configuración — Catálogo */}
-      <Route path="/catalogo/productos"   element={<RutaProtegida><CatalogoPage /></RutaProtegida>} />
-      <Route path="/catalogo/categorias"  element={<RutaProtegida><CategoriasPage /></RutaProtegida>} />
-      <Route path="/catalogo/proveedores" element={<RutaProtegida><ProveedoresPage /></RutaProtegida>} />
-      <Route path="/catalogo/servicios"   element={<RutaProtegida><ServiciosPage /></RutaProtegida>} />
+      <Route path="/catalogo/productos"   element={<RutaProtegida permisos={['gestionar_catalogo']}><CatalogoPage /></RutaProtegida>} />
+      <Route path="/catalogo/categorias"  element={<RutaProtegida permisos={['gestionar_catalogo']}><CategoriasPage /></RutaProtegida>} />
+      <Route path="/catalogo/proveedores" element={<RutaProtegida permisos={['gestionar_catalogo']}><ProveedoresPage /></RutaProtegida>} />
+      <Route path="/catalogo/servicios"   element={<RutaProtegida permisos={['gestionar_catalogo']}><ServiciosPage /></RutaProtegida>} />
 
       {/* Sistema */}
       <Route path="/notificaciones"     element={<RutaProtegida><NotificacionesPage /></RutaProtegida>} />
-      <Route path="/auditoria"          element={<RutaProtegida><AuditoriaPage /></RutaProtegida>} />
+      <Route path="/auditoria"          element={<RutaProtegida permisos={['gestionar_usuarios']}><AuditoriaPage /></RutaProtegida>} />
       <Route path="/auditoria/exportar" element={P('Exportar log', 'Descarga del historial de auditoría en CSV o PDF', <Download size={32} />)} />
       <Route path="/auditoria/reporte"  element={P('Reporte de actividad', 'Resumen estadístico de acciones por módulo y período', <BarChart3 size={32} />)} />
 
-      {/* Perfil */}
+      {/* Perfil — siempre accesible */}
       <Route path="/perfil" element={<RutaProtegida><PerfilPage /></RutaProtegida>} />
 
       {/* Redireccionamientos de compatibilidad con rutas antiguas */}

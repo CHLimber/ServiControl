@@ -3,6 +3,7 @@ import { proyectosApi } from '../../api/proyectos'
 import { entidadesApi } from '../../api/entidades'
 import { catalogosApi } from '../../api/catalogos'
 import { cotizacionesApi } from '../../api/cotizaciones'
+import { useAuth } from '../../context/AuthContext'
 import { Eye, RefreshCw, X, Paperclip, ExternalLink, Trash2 } from 'lucide-react'
 
 const BADGE_ESTADO = {
@@ -29,6 +30,9 @@ function formatFechaHora(iso) {
 }
 
 export default function ProyectosPage({ abrirCrearInicial = false }) {
+  const { puede } = useAuth()
+  const puedeCrear  = puede('crear_proyectos')
+  const puedeEditar = puede('editar_proyectos')
   const [proyectos, setProyectos]     = useState([])
   const [cargando, setCargando]       = useState(true)
   const [error, setError]             = useState(null)
@@ -69,7 +73,7 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
 
   useEffect(() => {
     cargarProyectos()
-    if (abrirCrearInicial) setModalCrear(true)
+    if (abrirCrearInicial && puedeCrear) setModalCrear(true)
   }, [])
 
   async function cargarProyectos() {
@@ -239,7 +243,9 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
           <h1 className="page-title">Proyectos</h1>
           <p className="page-subtitle">Seguimiento de instalaciones y obras</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proyecto</button>
+        {puedeCrear && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proyecto</button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -293,8 +299,10 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" title="Ver historial"
                           onClick={() => abrirDetalle(p)}><Eye size={14} /></button>
-                        <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => abrirModalEstado(p)}><RefreshCw size={14} /></button>
+                        {puedeEditar && (
+                          <button className="btn btn-ghost btn-sm" title="Cambiar estado"
+                            onClick={() => abrirModalEstado(p)}><RefreshCw size={14} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -416,12 +424,14 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
               {/* Tab: Documentos (CU30) */}
               {tabDetalle === 'documentos' && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                    <button className="btn btn-primary btn-sm" onClick={abrirAdjuntar}>
-                      <Paperclip size={13} style={{ marginRight: 5 }} />
-                      Adjuntar documento
-                    </button>
-                  </div>
+                  {puedeEditar && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                      <button className="btn btn-primary btn-sm" onClick={abrirAdjuntar}>
+                        <Paperclip size={13} style={{ marginRight: 5 }} />
+                        Adjuntar documento
+                      </button>
+                    </div>
+                  )}
                   {cargandoDetalle ? (
                     <div className="text-muted text-sm">Cargando documentos...</div>
                   ) : documentos.length === 0 ? (
@@ -452,11 +462,13 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
                               className="btn btn-ghost btn-sm" title="Abrir documento">
                               <ExternalLink size={13} />
                             </a>
-                            <button className="btn btn-ghost btn-sm" title="Eliminar"
-                              style={{ color: 'var(--danger)' }}
-                              onClick={() => eliminarDocumento(doc)}>
-                              <Trash2 size={13} />
-                            </button>
+                            {puedeEditar && (
+                              <button className="btn btn-ghost btn-sm" title="Eliminar"
+                                style={{ color: 'var(--danger)' }}
+                                onClick={() => eliminarDocumento(doc)}>
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -466,10 +478,12 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
               )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-ghost"
-                onClick={() => abrirModalEstado(detalle)}>
-                Cambiar estado
-              </button>
+              {puedeEditar && (
+                <button className="btn btn-ghost"
+                  onClick={() => abrirModalEstado(detalle)}>
+                  Cambiar estado
+                </button>
+              )}
             </div>
           </div>
         </div>

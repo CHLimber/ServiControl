@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
+import { useAuth } from '../../context/AuthContext'
 import { FolderOpen, FileText, Download, Eye, Trash2, X, Upload, Paperclip } from 'lucide-react'
 
 function formatFechaHora(iso) {
@@ -48,6 +49,8 @@ function badgeExtension(ruta) {
 const FORM_VACIO = { nombre: '', id_tipo_documento: '', descripcion: '', archivo: null }
 
 export default function DocumentosPage() {
+  const { puede } = useAuth()
+  const puedeEditar = puede('editar_proyectos')
   const [proyectos, setProyectos]       = useState([])
   const [proyectoSel, setProyectoSel]   = useState(null)
   const [documentos, setDocumentos]     = useState([])
@@ -258,7 +261,7 @@ export default function DocumentosPage() {
                 <span style={{ fontWeight: 600, fontSize: 16 }}>{proyectoSel.titulo}</span>
                 <span className="text-muted text-sm" style={{ marginLeft: 10 }}>{proyectoSel.codigo}</span>
               </div>
-              {!mostrarForm && (
+              {puedeEditar && !mostrarForm && (
                 <button className="btn btn-primary btn-sm" onClick={abrirForm}>
                   <Paperclip size={14} style={{ marginRight: 4 }} />
                   Adjuntar documento
@@ -434,14 +437,16 @@ export default function DocumentosPage() {
                       >
                         <Download size={14} />
                       </button>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        title="Eliminar documento"
-                        style={{ color: 'var(--danger)' }}
-                        onClick={() => eliminar(d)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {puedeEditar && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          title="Eliminar documento"
+                          style={{ color: 'var(--danger)' }}
+                          onClick={() => eliminar(d)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

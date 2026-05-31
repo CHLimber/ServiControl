@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { proyectosApi } from '../../api/proyectos'
+import { useAuth } from '../../context/AuthContext'
 import { ClipboardList, NotebookPen } from 'lucide-react'
 
 function formatFechaHora(iso) {
@@ -8,6 +9,8 @@ function formatFechaHora(iso) {
 }
 
 export default function BitacorasProyectoPage() {
+  const { puede } = useAuth()
+  const puedeEditar = puede('editar_proyectos')
   const [proyectos, setProyectos]           = useState([])
   const [proyectoSel, setProyectoSel]       = useState(null)
   const [notas, setNotas]                   = useState([])
@@ -137,28 +140,30 @@ export default function BitacorasProyectoPage() {
               </span>
             </div>
 
-            {/* Formulario nueva nota */}
-            <form onSubmit={guardarNota} style={{ marginBottom: 24 }}>
-              <div className="form-group">
-                <label className="form-label">Nueva nota</label>
-                <textarea
-                  className="input"
-                  rows={3}
-                  value={nuevaNota}
-                  onChange={e => setNuevaNota(e.target.value)}
-                  placeholder="Escribí una observación sobre este proyecto..."
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  disabled={guardandoNota || !nuevaNota.trim()}
-                >
-                  {guardandoNota ? 'Guardando...' : '+ Agregar nota'}
-                </button>
-              </div>
-            </form>
+            {/* Formulario nueva nota — solo si puede editar proyectos */}
+            {puedeEditar && (
+              <form onSubmit={guardarNota} style={{ marginBottom: 24 }}>
+                <div className="form-group">
+                  <label className="form-label">Nueva nota</label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    value={nuevaNota}
+                    onChange={e => setNuevaNota(e.target.value)}
+                    placeholder="Escribí una observación sobre este proyecto..."
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={guardandoNota || !nuevaNota.trim()}
+                  >
+                    {guardandoNota ? 'Guardando...' : '+ Agregar nota'}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Listado de notas */}
             <div style={{ fontWeight: 600, marginBottom: 12 }}>

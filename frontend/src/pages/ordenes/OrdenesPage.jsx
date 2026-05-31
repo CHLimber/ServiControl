@@ -3,6 +3,7 @@ import { ordenesApi } from '../../api/ordenes'
 import { proyectosApi } from '../../api/proyectos'
 import { catalogosApi } from '../../api/catalogos'
 import { finanzasApi } from '../../api/finanzas'
+import { useAuth } from '../../context/AuthContext'
 import { Eye, RefreshCw, Pencil, Star, Users, Package, X, Check, DollarSign, Trash2, Plus } from 'lucide-react'
 
 const BADGE_ESTADO = {
@@ -27,6 +28,10 @@ function formatFechaHora(iso) {
 }
 
 export default function OrdenesPage({ abrirCrearInicial = false }) {
+  const { puede } = useAuth()
+  const puedeCrear  = puede('crear_ordenes')
+  const puedeEditar = puede('editar_ordenes')
+  const puedeGastos = puede('gestionar_finanzas')
   const [ordenes, setOrdenes]       = useState([])
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState(null)
@@ -80,7 +85,7 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
 
   useEffect(() => {
     cargarOrdenes()
-    if (abrirCrearInicial) setModalCrear(true)
+    if (abrirCrearInicial && puedeCrear) setModalCrear(true)
   }, [])
 
   async function cargarOrdenes() {
@@ -368,7 +373,9 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
           <h1 className="page-title">Órdenes de trabajo</h1>
           <p className="page-subtitle">Asignación y seguimiento de tareas técnicas</p>
         </div>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva OT</button>
+        {puedeCrear && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nueva OT</button>
+        )}
       </div>
 
       {/* Filtros */}
@@ -421,8 +428,10 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => abrirDetalle(o)} title="Ver detalle e historial"><Eye size={14} /></button>
-                        <button className="btn btn-ghost btn-sm" title="Cambiar estado"
-                          onClick={() => abrirModalEstado(o)}><RefreshCw size={14} /></button>
+                        {puedeEditar && (
+                          <button className="btn btn-ghost btn-sm" title="Cambiar estado"
+                            onClick={() => abrirModalEstado(o)}><RefreshCw size={14} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -475,9 +484,11 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Users size={15} /> Personal asignado
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={abrirEditPersonal}>
-                  <Pencil size={13} style={{ marginRight: 4 }} />Editar personal
-                </button>
+                {puedeEditar && (
+                  <button className="btn btn-ghost btn-sm" onClick={abrirEditPersonal}>
+                    <Pencil size={13} style={{ marginRight: 4 }} />Editar personal
+                  </button>
+                )}
               </div>
               {cargandoDetalle ? (
                 <div className="text-muted text-sm" style={{ marginBottom: 16 }}>Cargando...</div>
@@ -508,12 +519,12 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                       <Package size={15} /> Materiales
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {!modoConsumo && (
+                      {puedeEditar && !modoConsumo && (
                         <button className="btn btn-ghost btn-sm" onClick={abrirEditMateriales}>
                           <Pencil size={13} style={{ marginRight: 4 }} />Editar asignación
                         </button>
                       )}
-                      {!modoConsumo ? (
+                      {puedeEditar && (!modoConsumo ? (
                         <button className="btn btn-ghost btn-sm" onClick={() => setModoConsumo(true)}>
                           Reportar consumo
                         </button>
@@ -524,7 +535,7 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                             {guardandoConsumo ? 'Guardando...' : 'Guardar consumo'}
                           </button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
                   <div className="table-wrap" style={{ marginBottom: 20 }}>
@@ -584,10 +595,12 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                     </span>
                   )}
                 </div>
-                <button className="btn btn-ghost btn-sm"
-                  onClick={() => { setMostrarFormGasto(v => !v); setErrGasto('') }}>
-                  {mostrarFormGasto ? 'Cancelar' : <><Plus size={13} style={{ marginRight: 4 }} />Agregar gasto</>}
-                </button>
+                {puedeGastos && (
+                  <button className="btn btn-ghost btn-sm"
+                    onClick={() => { setMostrarFormGasto(v => !v); setErrGasto('') }}>
+                    {mostrarFormGasto ? 'Cancelar' : <><Plus size={13} style={{ marginRight: 4 }} />Agregar gasto</>}
+                  </button>
+                )}
               </div>
 
               {mostrarFormGasto && (
@@ -650,11 +663,13 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
                         {g.descripcion || '—'} · {new Date(g.fecha_gasto).toLocaleDateString('es-BO')}
                       </span>
                       <span className="text-muted text-sm" style={{ flexShrink: 0 }}>{g.usuario}</span>
-                      <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
-                        style={{ color: 'var(--danger)', flexShrink: 0 }}
-                        onClick={() => eliminarGasto(g)}>
-                        <Trash2 size={13} />
-                      </button>
+                      {puedeGastos && (
+                        <button className="btn btn-ghost btn-sm" title="Eliminar gasto"
+                          style={{ color: 'var(--danger)', flexShrink: 0 }}
+                          onClick={() => eliminarGasto(g)}>
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -709,10 +724,12 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-ghost"
-                onClick={() => { abrirModalEstado(detalle); setDetalle(null); setModoConsumo(false) }}>
-                Cambiar estado
-              </button>
+              {puedeEditar && (
+                <button className="btn btn-ghost"
+                  onClick={() => { abrirModalEstado(detalle); setDetalle(null); setModoConsumo(false) }}>
+                  Cambiar estado
+                </button>
+              )}
             </div>
           </div>
         </div>
