@@ -3,8 +3,8 @@ import uuid
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from datetime import datetime
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 from ...models.proyectos.proyecto import Proyecto, ProyectoHistorial, EstadoProyecto
 from ...models.entidades.entidad import Establecimiento
 from ...models.bitacoras.bitacora_doc import BitacoraProyecto, Documento
@@ -54,7 +54,7 @@ def crear():
     sistema = db.get_or_404(Sistema, data['id_sistema'])
     id_establecimiento = data.get('id_establecimiento') or sistema.id_establecimiento
 
-    prefijo = datetime.now().strftime('PROY-%Y%m-')
+    prefijo = ahora_bolivia().strftime('PROY-%Y%m-')
     ultimo = (Proyecto.query
               .filter(Proyecto.codigo.like(f'{prefijo}%'))
               .order_by(Proyecto.id.desc())

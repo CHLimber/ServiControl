@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Mantenimiento(db.Model):
@@ -12,7 +13,7 @@ class Mantenimiento(db.Model):
     periodicidad_dias = db.Column(db.Integer)
     estado = db.Column(db.Enum('pendiente', 'confirmado', 'reprogramado', 'completado', 'vencido'))
     creado_automaticamente = db.Column(db.Boolean, default=False)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
 
     alertas = db.relationship('AlertaMantenimiento', back_populates='mantenimiento')
 
@@ -23,7 +24,7 @@ class AlertaMantenimiento(db.Model):
     id_mantenimiento = db.Column(db.Integer, db.ForeignKey('mantenimiento.id', name='fk_alerta_mant_mant'), nullable=False)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id', name='fk_alerta_mant_usuario'), nullable=False)
     id_establecimiento = db.Column(db.Integer, db.ForeignKey('establecimiento.id', name='fk_alerta_mant_estab'), nullable=False)
-    fecha = db.Column(db.DateTime, server_default=db.func.now())
+    fecha = db.Column(db.DateTime, default=ahora_bolivia)
     estado = db.Column(db.Enum('pendiente', 'enviada', 'leida', 'completada'), default='pendiente')
     observacion = db.Column(db.Text)
 

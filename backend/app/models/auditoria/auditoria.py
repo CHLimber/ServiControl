@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Bitacora(db.Model):
@@ -9,7 +10,7 @@ class Bitacora(db.Model):
     modulo = db.Column(db.String(50), nullable=True)
     descripcion = db.Column(db.Text, nullable=True)
     ip = db.Column(db.String(45), nullable=True)
-    fecha = db.Column(db.DateTime, server_default=db.func.now(), nullable=False)
+    fecha = db.Column(db.DateTime, default=ahora_bolivia, nullable=False)
 
     usuario = db.relationship('Usuario', foreign_keys=[id_usuario])
     detalles = db.relationship('BitacoraDetalle', backref='bitacora', cascade='all, delete-orphan')

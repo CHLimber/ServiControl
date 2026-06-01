@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Notificacion(db.Model):
@@ -13,4 +14,4 @@ class Notificacion(db.Model):
     ), nullable=False)
     leida = db.Column(db.Boolean, default=False)
     url = db.Column(db.String(300))
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)

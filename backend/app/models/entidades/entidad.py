@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Entidad(db.Model):
@@ -9,7 +10,7 @@ class Entidad(db.Model):
     email = db.Column(db.String(100))
     cliente = db.Column(db.Boolean, default=False)
     empleado = db.Column(db.Boolean, default=False)
-    fecha_registro = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)
     estado = db.Column(db.Boolean, default=True)
 
     natural = db.relationship('EntidadNatural', back_populates='entidad', uselist=False)
@@ -43,7 +44,7 @@ class Empleado(db.Model):
     id_entidad = db.Column(db.Integer, db.ForeignKey('entidad.id', name='fk_empleado_entidad'), nullable=False)
     id_cargo = db.Column(db.Integer, db.ForeignKey('cargo.id', name='fk_empleado_cargo'))
     estado = db.Column(db.Boolean, default=True)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
 
     entidad = db.relationship('Entidad', back_populates='empleado_rel')
     usuario = db.relationship('Usuario', back_populates='empleado', uselist=False)
@@ -57,7 +58,7 @@ class Establecimiento(db.Model):
     id_tipo_establecimiento = db.Column(db.Integer, db.ForeignKey('tipo_establecimiento.id', name='fk_establecimiento_tipo'))
     direccion = db.Column(db.String(255))
     estado = db.Column(db.Boolean, default=True)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
 
 
 class Sistema(db.Model):
@@ -69,4 +70,4 @@ class Sistema(db.Model):
     tiene_mantenimiento = db.Column(db.Boolean, default=False)
     periodicidad_dias = db.Column(db.Integer)
     estado = db.Column(db.Boolean, default=True)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)

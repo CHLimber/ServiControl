@@ -7,6 +7,7 @@ from ...models.entidades.entidad import Empleado, Entidad
 from ...utils.bitacora import log
 from ...utils import correo
 from ...utils.permisos import requiere_permiso
+from ...utils.timezone import ahora_bolivia
 
 bp = Blueprint('usuarios', __name__)
 
@@ -170,7 +171,7 @@ def _serializar(u: Usuario) -> dict:
         'ultimo_acceso': u.ultimo_acceso.isoformat() if u.ultimo_acceso else None,
         'ultima_salida': u.ultima_salida.isoformat() if u.ultima_salida else None,
         'fecha_creacion': u.fecha_creacion.isoformat() if u.fecha_creacion else None,
-        'bloqueado': u.bloqueado_hasta is not None and u.bloqueado_hasta > __import__('datetime').datetime.now(),
+        'bloqueado': u.bloqueado_hasta is not None and u.bloqueado_hasta > ahora_bolivia(),
         'intentos_fallidos': u.intentos_fallidos,
         'veces_bloqueado': u.veces_bloqueado,
     }

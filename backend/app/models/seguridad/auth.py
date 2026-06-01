@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Rol(db.Model):
@@ -33,8 +34,8 @@ class Usuario(db.Model):
     email = db.Column(db.String(100))
     estado = db.Column(db.Boolean, default=True)
     ultimo_acceso = db.Column(db.DateTime)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
-    fecha_actualizacion = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
+    fecha_actualizacion = db.Column(db.DateTime, default=ahora_bolivia, onupdate=ahora_bolivia)
     # Columnas de seguridad (vía migración)
     intentos_fallidos = db.Column(db.SmallInteger, nullable=False, default=0)
     bloqueado_hasta = db.Column(db.DateTime, nullable=True)

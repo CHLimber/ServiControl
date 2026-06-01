@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 DEPARTAMENTOS = [
     'Santa Cruz', 'La Paz', 'Cochabamba', 'Potosí',
@@ -14,4 +15,4 @@ class Proveedor(db.Model):
     direccion = db.Column(db.String(255))
     departamento = db.Column(db.Enum(*DEPARTAMENTOS))
     estado = db.Column(db.Boolean, default=True)
-    fecha_registro = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)

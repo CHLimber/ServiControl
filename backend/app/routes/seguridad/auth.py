@@ -3,12 +3,13 @@ from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity,
 )
-from datetime import datetime, timedelta
+from datetime import timedelta
 from werkzeug.security import check_password_hash, generate_password_hash
 from ...extensions import db
 from ...models.seguridad.auth import Usuario, Permiso, RolPermiso
 from ...utils.bitacora import log
 from ...utils import correo
+from ...utils.timezone import ahora_bolivia
 
 bp = Blueprint('auth', __name__)
 
@@ -43,8 +44,8 @@ def login():
         log('LOGIN_FALLIDO', f"Intento con usuario inexistente '{username}'", usuario=username, modulo='auth')
         return jsonify({'error': 'Credenciales inválidas'}), 401
 
-    if usuario.bloqueado_hasta and datetime.now() < usuario.bloqueado_hasta:
-        segundos_restantes = int((usuario.bloqueado_hasta - datetime.now()).total_seconds())
+    if usuario.bloqueado_hasta and ahora_bolivia() < usuario.bloqueado_hasta:
+        segundos_restantes = int((usuario.bloqueado_hasta - ahora_bolivia()).total_seconds())
         minutos = segundos_restantes // 60
         segundos = segundos_restantes % 60
         log('LOGIN_BLOQUEADO', f"Usuario '{username}' bloqueado — {segundos_restantes}s restantes",
@@ -60,7 +61,7 @@ def login():
         if usuario.intentos_fallidos >= max_intentos:
             usuario.veces_bloqueado += 1
             minutos = _minutos_bloqueo(usuario.veces_bloqueado)
-            usuario.bloqueado_hasta = datetime.now() + timedelta(minutes=minutos)
+            usuario.bloqueado_hasta = ahora_bolivia() + timedelta(minutes=minutos)
             db.session.commit()
             log('LOGIN_BLOQUEADO', f"Usuario '{username}' bloqueado {minutos}min (bloqueo #{usuario.veces_bloqueado})",
             usuario=username, id_usuario=usuario.id, modulo='auth')
@@ -80,7 +81,7 @@ def login():
     usuario.intentos_fallidos = 0
     usuario.veces_bloqueado = 0
     usuario.bloqueado_hasta = None
-    usuario.ultimo_acceso = datetime.now()
+    usuario.ultimo_acceso = ahora_bolivia()
     db.session.commit()
 
     identity = str(usuario.id)
@@ -113,7 +114,7 @@ def refresh():
 def logout():
     id_usuario = int(get_jwt_identity())
     usuario = db.get_or_404(Usuario, id_usuario)
-    usuario.ultima_salida = datetime.now()
+    usuario.ultima_salida = ahora_bolivia()
     db.session.commit()
     log('LOGOUT', f"Usuario '{usuario.username}' cerró sesión", usuario=usuario.username, id_usuario=usuario.id, modulo='auth')
     return jsonify({'mensaje': 'Sesión cerrada'}), 200

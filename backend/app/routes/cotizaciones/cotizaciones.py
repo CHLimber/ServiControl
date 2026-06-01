@@ -9,6 +9,7 @@ from ...models.entidades.entidad import Entidad
 from ...models.catalogo.proveedor import Proveedor
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
+from ...utils.timezone import ahora_bolivia
 
 bp = Blueprint('cotizaciones', __name__)
 
@@ -71,8 +72,7 @@ def crear():
     mano_de_obra = Decimal(str(data.get('mano_de_obra', 0)))
 
     # Generar código automático: COT-YYYYMM-XXXX
-    from datetime import datetime
-    prefijo = datetime.now().strftime('COT-%Y%m-')
+    prefijo = ahora_bolivia().strftime('COT-%Y%m-')
     ultimo = (Cotizacion.query
               .filter(Cotizacion.codigo.like(f'{prefijo}%'))
               .order_by(Cotizacion.id.desc())
@@ -195,7 +195,7 @@ def convertir_proyecto(id_cotizacion):
         return jsonify({'error': 'El sistema de la cotización no tiene un establecimiento asignado. Asigná uno antes de convertir.'}), 400
     id_establecimiento = sistema.id_establecimiento
 
-    prefijo = datetime.now().strftime('PROY-%Y%m-')
+    prefijo = ahora_bolivia().strftime('PROY-%Y%m-')
     ultimo = (Proyecto.query
               .filter(Proyecto.codigo.like(f'{prefijo}%'))
               .order_by(Proyecto.id.desc())

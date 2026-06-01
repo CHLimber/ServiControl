@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime
+from .timezone import ahora_bolivia
 
 
 def log(accion: str, descripcion: str, usuario: str = None,
@@ -8,7 +8,7 @@ def log(accion: str, descripcion: str, usuario: str = None,
 
     detalles: lista de dicts con claves 'campo', 'anterior', 'nuevo'
     """
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = ahora_bolivia().strftime('%Y-%m-%d %H:%M:%S')
     quien = usuario if usuario else (f'id:{id_usuario}' if id_usuario else 'sistema')
     mod   = f'[{modulo}]' if modulo else '[---]'
     print(f"[BITÁCORA] {timestamp} {mod} {accion} | {quien} | {descripcion}", flush=True)

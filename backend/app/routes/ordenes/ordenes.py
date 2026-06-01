@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 from ...models.ordenes.orden import OrdenTrabajo, OrdenEmpleado, OrdenProducto, OrdenHistorial, EstadoOrden
 from ...models.entidades.entidad import Empleado
 from ...utils.bitacora import log
@@ -45,7 +45,7 @@ def crear():
         if not data.get(campo):
             return jsonify({'error': f'El campo {campo} es requerido'}), 400
 
-    prefijo = datetime.now().strftime('OT-%Y%m-')
+    prefijo = ahora_bolivia().strftime('OT-%Y%m-')
     ultimo = (OrdenTrabajo.query
               .filter(OrdenTrabajo.codigo.like(f'{prefijo}%'))
               .order_by(OrdenTrabajo.id.desc())

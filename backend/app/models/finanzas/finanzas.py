@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Pago(db.Model):
@@ -13,7 +14,7 @@ class Pago(db.Model):
     observacion = db.Column(db.Text)
     stripe_payment_intent_id = db.Column(db.String(100), nullable=True, unique=True)
     stripe_status = db.Column(db.String(50), nullable=True)
-    fecha_registro = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)
 
 
 class GastoOrden(db.Model):
@@ -25,4 +26,4 @@ class GastoOrden(db.Model):
     descripcion = db.Column(db.Text)
     monto = db.Column(db.Numeric(12, 2), nullable=False)
     fecha_gasto = db.Column(db.Date, nullable=False)
-    fecha_registro = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)

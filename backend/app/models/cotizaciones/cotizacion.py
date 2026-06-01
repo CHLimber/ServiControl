@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class Cotizacion(db.Model):
@@ -14,8 +15,8 @@ class Cotizacion(db.Model):
     mano_de_obra = db.Column(db.Numeric(12, 2), default=0)
     vigencia_dias = db.Column(db.Integer, default=30)
     observacion = db.Column(db.Text)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
-    fecha_actualizacion = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
+    fecha_actualizacion = db.Column(db.DateTime, default=ahora_bolivia, onupdate=ahora_bolivia)
 
     detalles = db.relationship('CotizacionDetalle', back_populates='cotizacion')
 

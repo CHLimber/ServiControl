@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class BitacoraCliente(db.Model):
@@ -7,7 +8,7 @@ class BitacoraCliente(db.Model):
     id_entidad = db.Column(db.Integer, db.ForeignKey('entidad.id', name='fk_bit_cli_entidad'), nullable=False)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id', name='fk_bit_cli_usuario'), nullable=False)
     nota = db.Column(db.Text, nullable=False)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
 
 
 class BitacoraProyecto(db.Model):
@@ -16,7 +17,7 @@ class BitacoraProyecto(db.Model):
     id_proyecto = db.Column(db.Integer, db.ForeignKey('proyecto.id', name='fk_bit_proy_proyecto'), nullable=False)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id', name='fk_bit_proy_usuario'), nullable=False)
     nota = db.Column(db.Text, nullable=False)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
 
 
 class Documento(db.Model):
@@ -28,5 +29,5 @@ class Documento(db.Model):
     id_tipo_documento = db.Column(db.Integer, db.ForeignKey('tipo_documento.id', name='fk_doc_tipo'), nullable=False)
     nombre = db.Column(db.String(255), nullable=False)
     ruta = db.Column(db.String(500), nullable=False)
-    fecha_subida = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_subida = db.Column(db.DateTime, default=ahora_bolivia)
     descripcion = db.Column(db.Text)

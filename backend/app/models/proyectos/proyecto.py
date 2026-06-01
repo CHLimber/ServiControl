@@ -1,4 +1,5 @@
 from ...extensions import db
+from ...utils.timezone import ahora_bolivia
 
 
 class EstadoProyecto(db.Model):
@@ -23,8 +24,8 @@ class Proyecto(db.Model):
     descripcion = db.Column(db.Text)
     fecha_inicio = db.Column(db.Date)
     fecha_fin = db.Column(db.Date)
-    fecha_creacion = db.Column(db.DateTime, server_default=db.func.now())
-    fecha_actualizacion = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    fecha_creacion = db.Column(db.DateTime, default=ahora_bolivia)
+    fecha_actualizacion = db.Column(db.DateTime, default=ahora_bolivia, onupdate=ahora_bolivia)
 
     estado = db.relationship('EstadoProyecto')
     historial = db.relationship('ProyectoHistorial', back_populates='proyecto')
@@ -37,7 +38,7 @@ class ProyectoHistorial(db.Model):
     id_estado_anterior = db.Column(db.Integer, db.ForeignKey('estado_proyecto.id', name='fk_proy_hist_estado_ant'))
     id_estado_nuevo = db.Column(db.Integer, db.ForeignKey('estado_proyecto.id', name='fk_proy_hist_estado_nuevo'), nullable=False)
     id_usuario = db.Column(db.Integer, db.ForeignKey('usuario.id', name='fk_proy_hist_usuario'), nullable=False)
-    fecha_cambio = db.Column(db.DateTime, server_default=db.func.now())
+    fecha_cambio = db.Column(db.DateTime, default=ahora_bolivia)
     observacion = db.Column(db.Text)
 
     proyecto = db.relationship('Proyecto', back_populates='historial')
