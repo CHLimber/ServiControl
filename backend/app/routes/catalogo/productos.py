@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import text
 from ...extensions import db
 from ...models.catalogo.producto import Producto
 from ...models.catalogo.catalogo import Categoria
@@ -15,6 +16,55 @@ bp = Blueprint('productos', __name__)
 def listar():
     productos = Producto.query.filter_by(estado=True).order_by(Producto.nombre).all()
     return jsonify([_serializar(p) for p in productos])
+
+
+@bp.get('/precios-proveedores')
+@jwt_required()
+@requiere_permiso('gestionar_catalogo')
+def precios_proveedores():
+    """Devuelve todas las relaciones producto-proveedor con su precio fijo.
+    Usado por cotizaciones para autollenar precios y filtrar proveedores válidos."""
+    rows = db.session.execute(
+        text(
+            "SELECT pp.id_producto, pp.id_proveedor, pp.precio_unitario, pp.es_principal "
+            "FROM producto_proveedor pp "
+            "JOIN producto p   ON pp.id_producto  = p.id "
+            "JOIN proveedor pv ON pp.id_proveedor = pv.id "
+            "WHERE p.estado = TRUE AND pv.estado = TRUE"
+        )
+    ).fetchall()
+    return jsonify([{
+        'id_producto':     r[0],
+        'id_proveedor':    r[1],
+        'precio_unitario': float(r[2]),
+        'es_principal':    bool(r[3]),
+    } for r in rows])
+
+
+@bp.get('/<int:id_producto>/proveedores')
+@jwt_required()
+@requiere_permiso('gestionar_catalogo')
+def proveedores_de_producto(id_producto):
+    """Lista proveedores activos que ofrecen este producto, con su precio."""
+    db.get_or_404(Producto, id_producto)
+    rows = db.session.execute(
+        text(
+            "SELECT pp.id_proveedor, pv.nombre, pp.precio_unitario, pp.es_principal, "
+            "       pp.fecha_actualizacion "
+            "FROM producto_proveedor pp "
+            "JOIN proveedor pv ON pp.id_proveedor = pv.id "
+            "WHERE pp.id_producto = :id AND pv.estado = TRUE "
+            "ORDER BY pp.es_principal DESC, pv.nombre"
+        ),
+        {'id': id_producto},
+    ).fetchall()
+    return jsonify([{
+        'id_proveedor':        r[0],
+        'nombre':              r[1],
+        'precio_unitario':     float(r[2]),
+        'es_principal':        bool(r[3]),
+        'fecha_actualizacion': r[4].isoformat() if r[4] else None,
+    } for r in rows])
 
 
 @bp.get('/<int:id_producto>')

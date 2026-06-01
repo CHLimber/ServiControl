@@ -23,6 +23,20 @@ function formatBs(n) {
   return `Bs ${Number(n).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
 }
 
+function buscarPrecio(precios, idProd, idProv) {
+  if (!idProd || !idProv) return null
+  const r = precios.find(p => p.id_producto === Number(idProd) && p.id_proveedor === Number(idProv))
+  return r ? r.precio_unitario : null
+}
+
+function proveedoresParaProducto(precios, proveedores, idProd) {
+  if (!idProd) return []
+  const ids = precios
+    .filter(p => p.id_producto === Number(idProd))
+    .map(p => p.id_proveedor)
+  return proveedores.filter(p => ids.includes(p.id))
+}
+
 export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const { puede } = useAuth()
   const puedeCrear     = puede('crear_cotizaciones')
@@ -43,6 +57,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const [servicios, setServicios]       = useState([])
   const [proveedores, setProveedores]   = useState([])
   const [productos, setProductos]       = useState([])
+  const [precios, setPrecios]           = useState([])  // producto_proveedor: precios fijos
   const [tiposSistema, setTiposSistema] = useState([])
   const [sistemasCliente, setSistemasCliente] = useState([])
   const [form, setForm]                 = useState({
@@ -106,17 +121,19 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
     setModalCrear(true)
 
     // Cargar datos de referencia en paralelo
-    const [ents, servs, provs, prods, tiposSis] = await Promise.all([
+    const [ents, servs, provs, prods, precs, tiposSis] = await Promise.all([
       entidadesApi.listar(),
       catalogosApi.servicios(),
       catalogosApi.proveedores(),
       productosApi.listar(),
+      productosApi.preciosProveedores(),
       catalogosApi.tiposSistema(),
     ])
     setClientes(ents.filter(e => e.cliente))
     setServicios(servs)
     setProveedores(provs)
     setProductos(prods)
+    setPrecios(precs)
     setTiposSistema(tiposSis)
   }
 
@@ -163,7 +180,23 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
 
   function actualizarFila(idx, campo, valor) {
     setForm(f => {
-      const detalles = f.detalles.map((d, i) => i === idx ? { ...d, [campo]: valor } : d)
+      const detalles = f.detalles.map((d, i) => {
+        if (i !== idx) return d
+        const nuevo = { ...d, [campo]: valor }
+        if (campo === 'id_producto') {
+          const provsValidos = precios.filter(p => p.id_producto === Number(valor)).map(p => p.id_proveedor)
+          if (!provsValidos.includes(Number(nuevo.id_proveedor))) {
+            nuevo.id_proveedor    = ''
+            nuevo.precio_unitario = ''
+          } else {
+            nuevo.precio_unitario = buscarPrecio(precios, valor, nuevo.id_proveedor) ?? ''
+          }
+        }
+        if (campo === 'id_proveedor') {
+          nuevo.precio_unitario = buscarPrecio(precios, nuevo.id_producto, valor) ?? ''
+        }
+        return nuevo
+      })
       return { ...f, detalles }
     })
   }
@@ -217,10 +250,15 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
     })
     setErrEditar('')
     setModalEditar(cot)
-    if (productos.length === 0 || proveedores.length === 0) {
-      const [provs, prods] = await Promise.all([catalogosApi.proveedores(), productosApi.listar()])
+    if (productos.length === 0 || proveedores.length === 0 || precios.length === 0) {
+      const [provs, prods, precs] = await Promise.all([
+        catalogosApi.proveedores(),
+        productosApi.listar(),
+        productosApi.preciosProveedores(),
+      ])
       if (proveedores.length === 0) setProveedores(provs)
       if (productos.length === 0)   setProductos(prods)
+      if (precios.length === 0)     setPrecios(precs)
     }
   }
 
@@ -233,7 +271,23 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
   function actualizarFilaEditar(idx, campo, valor) {
     setFormEditar(f => ({
       ...f,
-      detalles: f.detalles.map((d, i) => i === idx ? { ...d, [campo]: valor } : d),
+      detalles: f.detalles.map((d, i) => {
+        if (i !== idx) return d
+        const nuevo = { ...d, [campo]: valor }
+        if (campo === 'id_producto') {
+          const provsValidos = precios.filter(p => p.id_producto === Number(valor)).map(p => p.id_proveedor)
+          if (!provsValidos.includes(Number(nuevo.id_proveedor))) {
+            nuevo.id_proveedor    = ''
+            nuevo.precio_unitario = ''
+          } else {
+            nuevo.precio_unitario = buscarPrecio(precios, valor, nuevo.id_proveedor) ?? ''
+          }
+        }
+        if (campo === 'id_proveedor') {
+          nuevo.precio_unitario = buscarPrecio(precios, nuevo.id_producto, valor) ?? ''
+        }
+        return nuevo
+      }),
     }))
   }
 
@@ -600,7 +654,9 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {form.detalles.map((fila, idx) => (
+                      {form.detalles.map((fila, idx) => {
+                        const provsValidos = proveedoresParaProducto(precios, proveedores, fila.id_producto)
+                        return (
                         <tr key={idx}>
                           <td>
                             <select className="input" value={fila.id_producto}
@@ -613,11 +669,21 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                           </td>
                           <td>
                             <select className="input" value={fila.id_proveedor}
+                              disabled={!fila.id_producto}
                               onChange={e => actualizarFila(idx, 'id_proveedor', Number(e.target.value) || '')}>
-                              <option value="">Seleccioná</option>
-                              {proveedores.map(p => (
-                                <option key={p.id} value={p.id}>{p.nombre}</option>
-                              ))}
+                              <option value="">
+                                {!fila.id_producto
+                                  ? 'Primero el producto'
+                                  : provsValidos.length === 0 ? 'Sin proveedores' : 'Seleccioná'}
+                              </option>
+                              {provsValidos.map(p => {
+                                const r = precios.find(x => x.id_producto === Number(fila.id_producto) && x.id_proveedor === p.id)
+                                return (
+                                  <option key={p.id} value={p.id}>
+                                    {p.nombre}{r?.es_principal ? ' ★' : ''} — Bs {r?.precio_unitario?.toFixed(2)}
+                                  </option>
+                                )
+                              })}
                             </select>
                           </td>
                           <td>
@@ -626,10 +692,11 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                               onChange={e => actualizarFila(idx, 'cantidad', e.target.value)} />
                           </td>
                           <td>
-                            <input type="number" className="input" min="0" step="0.01"
-                              placeholder="0.00"
-                              value={fila.precio_unitario}
-                              onChange={e => actualizarFila(idx, 'precio_unitario', e.target.value)} />
+                            <input type="text" className="input"
+                              readOnly tabIndex={-1}
+                              title="Precio fijo definido en producto×proveedor"
+                              value={fila.precio_unitario ? formatBs(fila.precio_unitario) : '—'}
+                              style={{ backgroundColor: 'var(--bg-subtle, #f5f5f5)', cursor: 'not-allowed' }} />
                           </td>
                           <td className="text-sm" style={{ textAlign: 'right' }}>
                             {formatBs(subtotalFila(fila))}
@@ -642,7 +709,8 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                             )}
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -791,7 +859,9 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {formEditar.detalles.map((fila, idx) => (
+                      {formEditar.detalles.map((fila, idx) => {
+                        const provsValidos = proveedoresParaProducto(precios, proveedores, fila.id_producto)
+                        return (
                         <tr key={idx}>
                           <td>
                             <select className="input" value={fila.id_producto}
@@ -802,9 +872,21 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                           </td>
                           <td>
                             <select className="input" value={fila.id_proveedor}
+                              disabled={!fila.id_producto}
                               onChange={e => actualizarFilaEditar(idx, 'id_proveedor', Number(e.target.value) || '')}>
-                              <option value="">Seleccioná</option>
-                              {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                              <option value="">
+                                {!fila.id_producto
+                                  ? 'Primero el producto'
+                                  : provsValidos.length === 0 ? 'Sin proveedores' : 'Seleccioná'}
+                              </option>
+                              {provsValidos.map(p => {
+                                const r = precios.find(x => x.id_producto === Number(fila.id_producto) && x.id_proveedor === p.id)
+                                return (
+                                  <option key={p.id} value={p.id}>
+                                    {p.nombre}{r?.es_principal ? ' ★' : ''} — Bs {r?.precio_unitario?.toFixed(2)}
+                                  </option>
+                                )
+                              })}
                             </select>
                           </td>
                           <td>
@@ -813,9 +895,11 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                               onChange={e => actualizarFilaEditar(idx, 'cantidad', e.target.value)} />
                           </td>
                           <td>
-                            <input type="number" className="input" min="0" step="0.01"
-                              value={fila.precio_unitario}
-                              onChange={e => actualizarFilaEditar(idx, 'precio_unitario', e.target.value)} />
+                            <input type="text" className="input"
+                              readOnly tabIndex={-1}
+                              title="Precio fijo definido en producto×proveedor"
+                              value={fila.precio_unitario ? formatBs(fila.precio_unitario) : '—'}
+                              style={{ backgroundColor: 'var(--bg-subtle, #f5f5f5)', cursor: 'not-allowed' }} />
                           </td>
                           <td className="text-sm" style={{ textAlign: 'right' }}>
                             {formatBs(subtotalFila(fila))}
@@ -828,7 +912,8 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
                             )}
                           </td>
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

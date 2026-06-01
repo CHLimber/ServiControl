@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from decimal import Decimal
+from sqlalchemy import text
 from ...extensions import db
 from ...models.cotizaciones.cotizacion import Cotizacion, CotizacionDetalle
 from ...models.seguridad.auth import Usuario
@@ -20,6 +21,23 @@ def _get_usuario_id(identity):
         return int(identity)
     except (TypeError, ValueError):
         return None
+
+
+def _precio_producto_proveedor(id_producto, id_proveedor):
+    """Devuelve el precio FIJO definido en producto_proveedor para esa pareja.
+    None si no existe la relación o el producto/proveedor está inactivo."""
+    fila = db.session.execute(
+        text(
+            "SELECT pp.precio_unitario "
+            "FROM producto_proveedor pp "
+            "JOIN producto  p  ON pp.id_producto  = p.id "
+            "JOIN proveedor pv ON pp.id_proveedor = pv.id "
+            "WHERE pp.id_producto = :pid AND pp.id_proveedor = :vid "
+            "  AND p.estado = TRUE AND pv.estado = TRUE"
+        ),
+        {'pid': id_producto, 'vid': id_proveedor},
+    ).fetchone()
+    return Decimal(str(fila[0])) if fila else None
 
 
 @bp.get('/')
@@ -57,16 +75,22 @@ def crear():
     if not id_usuario:
         return jsonify({'error': 'Usuario no encontrado'}), 400
 
-    # Calcular subtotal_productos sumando los detalles
+    # Calcular subtotal_productos sumando los detalles.
+    # El precio NUNCA se toma del cliente: viene fijo de producto_proveedor.
     subtotal_productos = Decimal('0')
     for d in data['detalles']:
         if not d.get('id_producto') or not d.get('id_proveedor'):
             return jsonify({'error': 'Cada detalle requiere id_producto e id_proveedor'}), 400
         try:
             cantidad = Decimal(str(d['cantidad']))
-            precio   = Decimal(str(d['precio_unitario']))
         except Exception:
-            return jsonify({'error': 'Cantidad y precio deben ser números válidos'}), 400
+            return jsonify({'error': 'La cantidad debe ser un número válido'}), 400
+        if cantidad <= 0:
+            return jsonify({'error': 'La cantidad debe ser mayor a cero'}), 400
+        precio = _precio_producto_proveedor(d['id_producto'], d['id_proveedor'])
+        if precio is None:
+            return jsonify({'error': f"El proveedor {d['id_proveedor']} no ofrece el producto {d['id_producto']}"}), 400
+        d['_precio_fijo'] = precio
         subtotal_productos += cantidad * precio
 
     mano_de_obra = Decimal(str(data.get('mano_de_obra', 0)))
@@ -102,7 +126,7 @@ def crear():
 
     for d in data['detalles']:
         cantidad = Decimal(str(d['cantidad']))
-        precio   = Decimal(str(d['precio_unitario']))
+        precio   = d['_precio_fijo']
         detalle  = CotizacionDetalle(
             id_cotizacion=cotizacion.id,
             id_producto=d['id_producto'],
@@ -311,15 +335,20 @@ def actualizar_detalles(id_cotizacion):
             return jsonify({'error': 'Cada detalle requiere id_producto e id_proveedor'}), 400
         try:
             cantidad = Decimal(str(d['cantidad']))
-            precio   = Decimal(str(d['precio_unitario']))
         except Exception:
-            return jsonify({'error': 'Cantidad y precio deben ser números válidos'}), 400
+            return jsonify({'error': 'La cantidad debe ser un número válido'}), 400
+        if cantidad <= 0:
+            return jsonify({'error': 'La cantidad debe ser mayor a cero'}), 400
+        precio = _precio_producto_proveedor(d['id_producto'], d['id_proveedor'])
+        if precio is None:
+            return jsonify({'error': f"El proveedor {d['id_proveedor']} no ofrece el producto {d['id_producto']}"}), 400
+        d['_precio_fijo'] = precio
         subtotal_productos += cantidad * precio
 
     CotizacionDetalle.query.filter_by(id_cotizacion=id_cotizacion).delete()
     for d in nuevos:
         cantidad = Decimal(str(d['cantidad']))
-        precio   = Decimal(str(d['precio_unitario']))
+        precio   = d['_precio_fijo']
         db.session.add(CotizacionDetalle(
             id_cotizacion=id_cotizacion,
             id_producto=d['id_producto'],

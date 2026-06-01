@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { productosApi } from '../../api/productos'
 import { catalogosApi } from '../../api/catalogos'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X, DollarSign } from 'lucide-react'
+
+function formatBs(n) {
+  return `Bs ${Number(n).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`
+}
 
 const UNIDADES = ['unidad', 'caja', 'rollo', 'bolsa', 'paquete', 'metro', 'par', 'kit']
 
@@ -19,6 +23,11 @@ export default function ProductosPage() {
   const [form, setForm]               = useState(FORM_VACIO)
   const [guardando, setGuardando]     = useState(false)
   const [errForm, setErrForm]         = useState('')
+
+  // Modal precios por proveedor
+  const [modalPrecios, setModalPrecios] = useState(null)   // producto o null
+  const [precios, setPrecios]           = useState([])
+  const [cargandoPrecios, setCargandoPrecios] = useState(false)
 
   useEffect(() => {
     cargarDatos()
@@ -87,6 +96,19 @@ export default function ProductosPage() {
       setErrForm(err.response?.data?.error || 'Error al guardar.')
     } finally {
       setGuardando(false)
+    }
+  }
+
+  async function abrirPrecios(producto) {
+    setModalPrecios(producto)
+    setPrecios([])
+    setCargandoPrecios(true)
+    try {
+      setPrecios(await productosApi.proveedoresDeProducto(producto.id))
+    } catch {
+      setPrecios([])
+    } finally {
+      setCargandoPrecios(false)
     }
   }
 
@@ -164,7 +186,7 @@ export default function ProductosPage() {
                   <th>Categoría</th>
                   <th>Unidad</th>
                   <th>Descripción</th>
-                  <th style={{ width: 100 }}>Acciones</th>
+                  <th style={{ width: 140 }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,6 +205,13 @@ export default function ProductosPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => abrirPrecios(p)}
+                          title="Ver precios por proveedor"
+                        >
+                          <DollarSign size={14} />
+                        </button>
                         <button
                           className="btn btn-ghost btn-sm"
                           onClick={() => abrirEditar(p)}
@@ -296,6 +325,65 @@ export default function ProductosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal precios por proveedor */}
+      {modalPrecios && (
+        <div className="modal-overlay" onClick={() => setModalPrecios(null)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Precios por proveedor — {modalPrecios.nombre}</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalPrecios(null)}>
+                <X size={14} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="text-muted text-sm" style={{ marginBottom: 12 }}>
+                Estos precios son fijos y se aplican automáticamente al cotizar.
+                Para modificarlos, andá a Proveedores → catálogo del proveedor.
+              </p>
+              {cargandoPrecios ? (
+                <div className="empty-state">Cargando precios...</div>
+              ) : precios.length === 0 ? (
+                <div className="empty-state">
+                  Este producto aún no tiene proveedores asociados.
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Proveedor</th>
+                        <th style={{ width: 140, textAlign: 'right' }}>Precio</th>
+                        <th style={{ width: 100 }}>Principal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {precios.map(r => (
+                        <tr key={r.id_proveedor}>
+                          <td>{r.nombre}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                            {formatBs(r.precio_unitario)}
+                          </td>
+                          <td>
+                            {r.es_principal
+                              ? <span className="badge badge-green">★ Principal</span>
+                              : <span className="text-muted text-sm">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setModalPrecios(null)}>
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
