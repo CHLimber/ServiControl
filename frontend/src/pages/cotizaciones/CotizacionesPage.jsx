@@ -46,6 +46,8 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const [error, setError]               = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busqueda, setBusqueda]         = useState('')
+  const [filtroDesde, setFiltroDesde]   = useState('')
+  const [filtroHasta, setFiltroHasta]   = useState('')
 
   // Modal lista → detalle
   const [detalle, setDetalle]           = useState(null)
@@ -361,7 +363,10 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
   const filtradas = cotizaciones.filter(c => {
     const coincideEstado = filtroEstado === '' || c.estado === filtroEstado
     const coincideBusqueda = c.codigo.toLowerCase().includes(busqueda.toLowerCase())
-    return coincideEstado && coincideBusqueda
+    const fecha = c.fecha_creacion ? c.fecha_creacion.slice(0, 10) : ''
+    const coincideDesde = !filtroDesde || (fecha && fecha >= filtroDesde)
+    const coincideHasta = !filtroHasta || (fecha && fecha <= filtroHasta)
+    return coincideEstado && coincideBusqueda && coincideDesde && coincideHasta
   })
 
   return (
@@ -378,7 +383,7 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 180 }}
             placeholder="Buscar por código..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -387,6 +392,22 @@ export default function CotizacionesPage({ abrirCrearInicial = false }) {
             <option value="">Todos los estados</option>
             {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Desde
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)} />
+          </label>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Hasta
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)} />
+          </label>
+          {(busqueda || filtroEstado || filtroDesde || filtroHasta) && (
+            <button className="btn btn-ghost"
+              onClick={() => { setBusqueda(''); setFiltroEstado(''); setFiltroDesde(''); setFiltroHasta('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

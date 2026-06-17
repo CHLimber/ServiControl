@@ -58,6 +58,7 @@ export default function DocumentosPage() {
   const [cargando, setCargando]         = useState(true)
   const [cargandoDocs, setCargandoDocs] = useState(false)
   const [busqueda, setBusqueda]         = useState('')
+  const [filtroEstado, setFiltroEstado] = useState('')
   const [mostrarForm, setMostrarForm]   = useState(false)
   const [form, setForm]                 = useState(FORM_VACIO)
   const [guardando, setGuardando]       = useState(false)
@@ -192,10 +193,15 @@ export default function DocumentosPage() {
     }
   }
 
-  const proyectosFiltrados = proyectos.filter(p =>
-    p.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
-    p.codigo.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const proyectosFiltrados = proyectos.filter(p => {
+    const coincideBusqueda =
+      p.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.codigo.toLowerCase().includes(busqueda.toLowerCase())
+    const coincideEstado = filtroEstado === '' || p.estado_nombre === filtroEstado
+    return coincideBusqueda && coincideEstado
+  })
+
+  const estadosPresentes = [...new Set(proyectos.map(p => p.estado_nombre).filter(Boolean))]
 
   return (
     <>
@@ -210,7 +216,7 @@ export default function DocumentosPage() {
 
         {/* ── Panel izquierdo: lista de proyectos ── */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input
               className="input"
               placeholder="Buscar proyecto..."
@@ -218,6 +224,11 @@ export default function DocumentosPage() {
               onChange={e => setBusqueda(e.target.value)}
               style={{ width: '100%' }}
             />
+            <select className="input" style={{ width: '100%' }}
+              value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+              <option value="">Todos los estados</option>
+              {estadosPresentes.map(es => <option key={es} value={es}>{es}</option>)}
+            </select>
           </div>
           {cargando ? (
             <div className="empty-state" style={{ padding: 20 }}>Cargando...</div>
