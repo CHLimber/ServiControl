@@ -27,6 +27,7 @@ export default function EmpleadosPage() {
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState(null)
   const [busqueda, setBusqueda]     = useState('')
+  const [filtroCargo, setFiltroCargo] = useState('')
   const [verInactivos, setVerInactivos] = useState(false)
 
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -244,8 +245,10 @@ export default function EmpleadosPage() {
   }
 
   const filtrados = empleados.filter(e => {
-    const txt = (e.nombre + (e.ci || '') + (e.cargo || '')).toLowerCase()
-    return txt.includes(busqueda.toLowerCase())
+    const txt = (e.nombre + (e.ci || '') + (e.cargo || '') + (e.email || '')).toLowerCase()
+    const coincideBusqueda = txt.includes(busqueda.toLowerCase())
+    const coincideCargo = filtroCargo === '' || String(e.id_cargo) === filtroCargo
+    return coincideBusqueda && coincideCargo
   })
 
   return (
@@ -264,10 +267,15 @@ export default function EmpleadosPage() {
           <input
             className="input"
             style={{ flex: 1, minWidth: 200 }}
-            placeholder="Buscar por nombre, CI o cargo..."
+            placeholder="Buscar por nombre, CI, cargo o email..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
           />
+          <select className="input" style={{ minWidth: 170 }}
+            value={filtroCargo} onChange={e => setFiltroCargo(e.target.value)}>
+            <option value="">Todos los cargos</option>
+            {cargos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
             <input
               type="checkbox"
@@ -276,6 +284,11 @@ export default function EmpleadosPage() {
             />
             Ver inactivos
           </label>
+          {(busqueda || filtroCargo) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroCargo('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

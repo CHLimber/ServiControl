@@ -112,6 +112,9 @@ export default function CategoriasPage() {
               onChange={e => setVerInactivas(e.target.checked)} />
             Ver inactivas
           </label>
+          {busqueda && (
+            <button className="btn btn-ghost" onClick={() => setBusqueda('')}>Limpiar</button>
+          )}
         </div>
       </div>
 
