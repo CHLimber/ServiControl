@@ -22,4 +22,17 @@ export const finanzasApi = {
     ).toString()
     return client.get(`/finanzas/reporte${qs ? `?${qs}` : ''}`)
   },
+
+  // Exportación del reporte personalizado (Blob PDF/Excel)
+  exportarReporte: (params = {}) =>
+    client.get('/finanzas/reporte/exportar', { params, responseType: 'blob' }),
+
+  // Reporte por IA (Claude)
+  reporteIA: (data = {}) => client.post('/finanzas/reporte/ia', data),
+
+  // Reportes estáticos (SQL fijo)
+  listarReportesEstaticos: ()      => client.get('/finanzas/reporte/estaticos'),
+  reporteEstatico:         (clave) => client.get(`/finanzas/reporte/estaticos/${clave}`),
+  exportarReporteEstatico: (clave, formato) =>
+    client.get(`/finanzas/reporte/estaticos/${clave}/exportar`, { params: { formato }, responseType: 'blob' }),
 }

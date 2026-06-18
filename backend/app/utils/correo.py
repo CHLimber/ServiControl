@@ -12,7 +12,7 @@ def _enviar_async(app, msg):
             print(f"[CORREO] Error al enviar email a {msg.recipients}: {e}")
 
 
-def _enviar(destinatario: str, asunto: str, cuerpo: str):
+def _enviar(destinatario: str, asunto: str, cuerpo: str, id_usuario: int = None):
     if not destinatario or not current_app.config.get('MAIL_USERNAME'):
         return
     app = current_app._get_current_object()
@@ -20,7 +20,7 @@ def _enviar(destinatario: str, asunto: str, cuerpo: str):
     threading.Thread(target=_enviar_async, args=(app, msg), daemon=True).start()
 
 
-def notificar_intento_fallido(email: str, username: str, intentos: int, restantes: int):
+def notificar_intento_fallido(email: str, username: str, intentos: int, restantes: int, id_usuario: int = None):
     _enviar(
         email,
         "Intento de acceso fallido",
@@ -29,10 +29,11 @@ def notificar_intento_fallido(email: str, username: str, intentos: int, restante
         f"Te quedan {restantes} intento(s) antes de que la cuenta sea bloqueada temporalmente.\n\n"
         f"Si no fuiste tú, considera cambiar tu contraseña.\n\n"
         f"ServiControl",
+        id_usuario=id_usuario,
     )
 
 
-def notificar_cuenta_bloqueada(email: str, username: str, minutos: int):
+def notificar_cuenta_bloqueada(email: str, username: str, minutos: int, id_usuario: int = None):
     _enviar(
         email,
         "Cuenta bloqueada temporalmente",
@@ -41,10 +42,11 @@ def notificar_cuenta_bloqueada(email: str, username: str, minutos: int):
         f"debido a múltiples intentos de acceso fallidos.\n\n"
         f"Si no fuiste tú quien intentó acceder, contacta al administrador del sistema.\n\n"
         f"ServiControl",
+        id_usuario=id_usuario,
     )
 
 
-def notificar_cambio_password(email: str, username: str):
+def notificar_cambio_password(email: str, username: str, id_usuario: int = None):
     _enviar(
         email,
         "Contraseña actualizada",
@@ -52,14 +54,16 @@ def notificar_cambio_password(email: str, username: str):
         f"La contraseña de tu cuenta ha sido cambiada exitosamente.\n\n"
         f"Si no realizaste este cambio, contacta al administrador del sistema de inmediato.\n\n"
         f"ServiControl",
+        id_usuario=id_usuario,
     )
 
 
-def notificar_cuenta_desbloqueada(email: str, username: str):
+def notificar_cuenta_desbloqueada(email: str, username: str, id_usuario: int = None):
     _enviar(
         email,
         "Cuenta desbloqueada",
         f"Hola {username},\n\n"
         f"Un administrador ha desbloqueado tu cuenta. Ya puedes iniciar sesión.\n\n"
         f"ServiControl",
+        id_usuario=id_usuario,
     )

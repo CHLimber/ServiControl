@@ -194,7 +194,7 @@ export default function AlertasMantenimientoPage() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 200 }}
             placeholder="Buscar por sistema o establecimiento..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -203,6 +203,11 @@ export default function AlertasMantenimientoPage() {
             <option value="">Todos los estados</option>
             {ESTADOS_ALERTA.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          {(busqueda || filtroEstado) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroEstado('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

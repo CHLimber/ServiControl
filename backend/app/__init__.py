@@ -37,6 +37,7 @@ def create_app(env: str = None):
     from .routes.mantenimiento.mantenimiento import bp as mantenimiento_bp
     from .routes.finanzas.finanzas       import bp as finanzas_bp
     from .routes.finanzas.stripe_routes  import bp_stripe as finanzas_stripe_bp
+    from .routes.bitacoras.bitacoras  import bp as bitacoras_bp
     from .routes.notificaciones.notificaciones import bp as notificaciones_bp
     from .routes.auditoria.auditoria  import bp as auditoria_bp
     from .routes.empleados.empleados  import bp as empleados_bp
@@ -57,6 +58,7 @@ def create_app(env: str = None):
     app.register_blueprint(mantenimiento_bp, url_prefix='/api/mantenimiento')
     app.register_blueprint(finanzas_bp,        url_prefix='/api/finanzas')
     app.register_blueprint(finanzas_stripe_bp, url_prefix='/api/finanzas')
+    app.register_blueprint(bitacoras_bp,     url_prefix='/api/bitacoras')
     app.register_blueprint(notificaciones_bp,url_prefix='/api/notificaciones')
     app.register_blueprint(auditoria_bp,     url_prefix='/api/auditoria')
     app.register_blueprint(empleados_bp,     url_prefix='/api/empleados')

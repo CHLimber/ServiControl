@@ -29,6 +29,8 @@ export default function SistemasPage() {
   const [cargando, setCargando]             = useState(true)
   const [error, setError]                   = useState(null)
   const [busqueda, setBusqueda]             = useState('')
+  const [filtroTipo, setFiltroTipo]         = useState('')
+  const [filtroMant, setFiltroMant]         = useState('')
   const [modalAbierto, setModalAbierto]     = useState(false)
   const [editando, setEditando]             = useState(null)
   const [form, setForm]                     = useState(FORM_VACIO)
@@ -139,8 +141,14 @@ export default function SistemasPage() {
   const filtrados = sistemas.filter(s => {
     const txt = [s.nombre, s.nombre_cliente, s.direccion_establecimiento, s.nombre_tipo_sistema]
       .join(' ').toLowerCase()
-    return txt.includes(busqueda.toLowerCase())
+    const coincideBusqueda = txt.includes(busqueda.toLowerCase())
+    const coincideTipo = filtroTipo === '' || s.nombre_tipo_sistema === filtroTipo
+    const coincideMant = filtroMant === '' ||
+      (filtroMant === 'con' ? s.tiene_mantenimiento : !s.tiene_mantenimiento)
+    return coincideBusqueda && coincideTipo && coincideMant
   })
+
+  const tiposPresentes = [...new Set(sistemas.map(s => s.nombre_tipo_sistema).filter(Boolean))]
 
   return (
     <>
@@ -156,12 +164,31 @@ export default function SistemasPage() {
 
       {/* Filtro */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <input
-          className="input"
-          placeholder="Buscar por nombre, cliente, dirección o tipo de sistema..."
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-        />
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <input
+            className="input"
+            style={{ flex: 1, minWidth: 200 }}
+            placeholder="Buscar por nombre, cliente, dirección o tipo de sistema..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+          />
+          <select className="input" style={{ minWidth: 170 }}
+            value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
+            <option value="">Todos los tipos</option>
+            {tiposPresentes.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select className="input" style={{ minWidth: 160 }}
+            value={filtroMant} onChange={e => setFiltroMant(e.target.value)}>
+            <option value="">Mantenimiento: todos</option>
+            <option value="con">Con mantenimiento</option>
+            <option value="sin">Sin mantenimiento</option>
+          </select>
+          {(busqueda || filtroTipo || filtroMant) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroTipo(''); setFiltroMant('') }}>
+              Limpiar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabla */}

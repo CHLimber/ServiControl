@@ -5,6 +5,7 @@ export const mantenimientoApi = {
   obtener:          (id)         => client.get(`/mantenimiento/${id}`),
   crear:            (data)       => client.post('/mantenimiento/', data),
   actualizar:       (id, d)      => client.put(`/mantenimiento/${id}`, d),
+  reprogramar:      (id, d)      => client.put(`/mantenimiento/${id}/reprogramar`, d),
   listarAlertas:    (params = {}) => client.get('/mantenimiento/alertas', { params }),
   crearAlerta:      (data)       => client.post('/mantenimiento/alertas', data),
   actualizarAlerta: (id, d)      => client.put(`/mantenimiento/alertas/${id}`, d),

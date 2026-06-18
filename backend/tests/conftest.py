@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy import text
 from werkzeug.security import generate_password_hash
 from app import create_app
 from app.extensions import db as _db
@@ -6,11 +7,32 @@ from app.models.seguridad.auth import Rol, Permiso, RolPermiso, Usuario
 from app.models.entidades.entidad import Entidad, Empleado
 
 
+# Tablas sin modelo ORM (se consultan con SQL crudo en las rutas).
+# create_all() solo crea tablas de modelos, así que las añadimos a mano
+# para que el entorno SQLite reproduzca el esquema MySQL de producción.
+_TABLAS_SIN_MODELO = [
+    "CREATE TABLE IF NOT EXISTS telefono ("
+    " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    " numero VARCHAR(20) NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS telefono_entidad ("
+    " id_telefono INTEGER NOT NULL,"
+    " id_entidad INTEGER NOT NULL,"
+    " PRIMARY KEY (id_telefono, id_entidad))",
+    "CREATE TABLE IF NOT EXISTS telefono_proveedor ("
+    " id_telefono INTEGER NOT NULL,"
+    " id_proveedor INTEGER NOT NULL,"
+    " PRIMARY KEY (id_telefono, id_proveedor))",
+]
+
+
 @pytest.fixture()
 def app():
     _app = create_app('testing')
     with _app.app_context():
         _db.create_all()
+        for ddl in _TABLAS_SIN_MODELO:
+            _db.session.execute(text(ddl))
+        _db.session.commit()
         _sembrar_base()
         yield _app
         _db.session.remove()

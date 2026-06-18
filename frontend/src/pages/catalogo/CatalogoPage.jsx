@@ -146,7 +146,7 @@ export default function ProductosPage() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input
             className="input"
             style={{ flex: 1, minWidth: 200 }}
@@ -165,6 +165,11 @@ export default function ProductosPage() {
               <option key={c.id} value={c.id}>{c.nombre}</option>
             ))}
           </select>
+          {(busqueda || filtroCategoria) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroCategoria('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

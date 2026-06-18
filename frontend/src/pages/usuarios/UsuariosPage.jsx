@@ -17,6 +17,7 @@ export default function UsuariosPage() {
   const [empleados, setEmpleados] = useState([])
   const [busqueda, setBusqueda]   = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')  // '', 'activo', 'inactivo'
+  const [filtroRol, setFiltroRol] = useState('')
 
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando]   = useState(null)
@@ -114,10 +115,13 @@ export default function UsuariosPage() {
     : empleados.filter(emp => !usuarios.find(u => u.id_empleado === emp.id && u.estado))
 
   const filtrados = usuarios.filter(u => {
-    const coincideBusq = (u.username + (u.empleado_nombre || '')).toLowerCase().includes(busqueda.toLowerCase())
+    const coincideBusq = (u.username + (u.empleado_nombre || '') + (u.email || '')).toLowerCase().includes(busqueda.toLowerCase())
     const coincideEst  = filtroEstado === '' || (filtroEstado === 'activo' ? u.estado : !u.estado)
-    return coincideBusq && coincideEst
+    const coincideRol  = filtroRol === '' || u.rol_nombre === filtroRol
+    return coincideBusq && coincideEst && coincideRol
   })
+
+  const rolesPresentes = [...new Set(usuarios.map(u => u.rol_nombre).filter(Boolean))]
 
   return (
     <>
@@ -131,16 +135,26 @@ export default function UsuariosPage() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 200 }}
-            placeholder="Buscar por username o nombre..."
+            placeholder="Buscar por username, nombre o email..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          <select className="input" style={{ minWidth: 160 }}
+            value={filtroRol} onChange={e => setFiltroRol(e.target.value)}>
+            <option value="">Todos los roles</option>
+            {rolesPresentes.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
           <select className="input" style={{ minWidth: 160 }}
             value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
             <option value="">Todos</option>
             <option value="activo">Solo activos</option>
             <option value="inactivo">Solo inactivos</option>
           </select>
+          {(busqueda || filtroEstado || filtroRol) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroEstado(''); setFiltroRol('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

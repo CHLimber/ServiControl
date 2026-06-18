@@ -37,6 +37,8 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
   const [error, setError]           = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busqueda, setBusqueda]     = useState('')
+  const [filtroDesde, setFiltroDesde] = useState('')
+  const [filtroHasta, setFiltroHasta] = useState('')
 
   // Detalle (CU25 + CU27)
   const [detalle, setDetalle]               = useState(null)
@@ -362,8 +364,12 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
   const nombresEstado = [...new Set(ordenes.map(o => o.estado_nombre).filter(Boolean))]
   const filtradas = ordenes.filter(o => {
     const coincideEstado = filtroEstado === '' || o.estado_nombre === filtroEstado
-    const coincideBusqueda = o.codigo.toLowerCase().includes(busqueda.toLowerCase())
-    return coincideEstado && coincideBusqueda
+    const txt = (o.codigo + (o.descripcion || '') + ' proy. #' + o.id_proyecto).toLowerCase()
+    const coincideBusqueda = txt.includes(busqueda.toLowerCase())
+    const fecha = o.fecha_ejecucion ? o.fecha_ejecucion.slice(0, 10) : ''
+    const coincideDesde = !filtroDesde || (fecha && fecha >= filtroDesde)
+    const coincideHasta = !filtroHasta || (fecha && fecha <= filtroHasta)
+    return coincideEstado && coincideBusqueda && coincideDesde && coincideHasta
   })
 
   return (
@@ -380,15 +386,31 @@ export default function OrdenesPage({ abrirCrearInicial = false }) {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 180 }}
-            placeholder="Buscar por código..."
+            placeholder="Buscar por código, descripción o proyecto..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
           <select className="input" style={{ minWidth: 180 }}
             value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
             <option value="">Todos los estados</option>
             {nombresEstado.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Desde
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)} />
+          </label>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Hasta
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)} />
+          </label>
+          {(busqueda || filtroEstado || filtroDesde || filtroHasta) && (
+            <button className="btn btn-ghost"
+              onClick={() => { setBusqueda(''); setFiltroEstado(''); setFiltroDesde(''); setFiltroHasta('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

@@ -6,4 +6,8 @@ export const notificacionesApi = {
   marcarTodas:  ()    => client.put('/notificaciones/leer-todas'),
   eliminar:     (id)  => client.delete(`/notificaciones/${id}`),
   noLeidas:     ()    => client.get('/notificaciones/no-leidas'),
+
+  // CU45 — Preferencias de notificación
+  getPreferencias:    ()     => client.get('/notificaciones/preferencias'),
+  guardarPreferencias: (data) => client.put('/notificaciones/preferencias', data),
 }

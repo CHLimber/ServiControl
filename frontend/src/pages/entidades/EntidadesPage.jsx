@@ -25,6 +25,7 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
   const [cargando, setCargando]       = useState(true)
   const [error, setError]             = useState(null)
   const [busqueda, setBusqueda]       = useState('')
+  const [filtroTipo, setFiltroTipo]   = useState('')
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editando, setEditando]       = useState(null)
   const [form, setForm]               = useState(FORM_NATURAL)
@@ -174,8 +175,10 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
 
   const filtradas = entidades.filter(e => {
     if (!e.cliente) return false
-    const txt = (e.nombre + (e.ci || '') + (e.nit || '')).toLowerCase()
-    return txt.includes(busqueda.toLowerCase())
+    const txt = (e.nombre + (e.ci || '') + (e.nit || '') + (e.email || '')).toLowerCase()
+    const coincideBusqueda = txt.includes(busqueda.toLowerCase())
+    const coincideTipo = filtroTipo === '' || e.tipo === filtroTipo
+    return coincideBusqueda && coincideTipo
   })
 
   return (
@@ -192,9 +195,22 @@ export default function EntidadesPage({ abrirCrearInicial = false }) {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <input className="input"
-          placeholder="Buscar por nombre, CI o NIT..."
-          value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <input className="input" style={{ flex: 1, minWidth: 200 }}
+            placeholder="Buscar por nombre, CI, NIT o email..."
+            value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          <select className="input" style={{ minWidth: 170 }}
+            value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
+            <option value="">Todos los tipos</option>
+            <option value="natural">Persona natural</option>
+            <option value="juridica">Persona jurídica</option>
+          </select>
+          {(busqueda || filtroTipo) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroTipo('') }}>
+              Limpiar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabla */}

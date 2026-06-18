@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ...extensions import db
@@ -6,6 +7,8 @@ from ...models.entidades.entidad import Sistema, Establecimiento, Entidad
 from ...models.seguridad.auth import Usuario
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
+from ...utils.timezone import ahora_bolivia
+from ...utils import notificaciones
 
 bp = Blueprint('mantenimiento', __name__)
 
@@ -87,6 +90,75 @@ def actualizar(id_mantenimiento):
     return jsonify(_serializar(m))
 
 
+# ── CU41: Reprogramar mantenimiento pendiente ───────────────────
+ESTADOS_NO_REPROGRAMABLES = ('completado', 'vencido')
+
+
+@bp.put('/<int:id_mantenimiento>/reprogramar')
+@jwt_required()
+@requiere_permiso('gestionar_mantenimientos')
+def reprogramar(id_mantenimiento):
+    m = db.get_or_404(Mantenimiento, id_mantenimiento)
+    data = request.get_json() or {}
+    id_usuario = int(get_jwt_identity())
+
+    # E1: no se permite reprogramar un mantenimiento ya ejecutado o vencido
+    if m.estado in ESTADOS_NO_REPROGRAMABLES:
+        return jsonify({
+            'error': f"No se puede reprogramar un mantenimiento en estado '{m.estado}'."
+        }), 409
+
+    nueva_fecha_raw = data.get('fecha_programada')
+    if not nueva_fecha_raw:
+        return jsonify({'error': 'La nueva fecha programada es requerida'}), 400
+
+    try:
+        nueva_fecha = datetime.strptime(nueva_fecha_raw, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Formato de fecha inválido (use AAAA-MM-DD)'}), 400
+
+    hoy = ahora_bolivia().date()
+    fecha_anterior = m.fecha_programada
+
+    # E2: la nueva fecha debe ser estrictamente futura
+    if nueva_fecha <= hoy:
+        return jsonify({'error': 'La nueva fecha debe ser posterior a hoy'}), 422
+    if fecha_anterior and nueva_fecha == fecha_anterior:
+        return jsonify({'error': 'La nueva fecha es igual a la fecha actual programada'}), 422
+
+    observacion = (data.get('observacion') or '').strip()
+
+    m.fecha_programada = nueva_fecha
+    m.estado = 'reprogramado'
+
+    # Actualizar la(s) alerta(s) vinculada(s) si existen
+    alertas_actualizadas = 0
+    for alerta in m.alertas:
+        if alerta.estado != 'completada':
+            alerta.estado = 'pendiente'
+            nota = f"Reprogramado a {nueva_fecha.isoformat()}"
+            if observacion:
+                nota += f" — {observacion}"
+            alerta.observacion = nota
+            alertas_actualizadas += 1
+
+    db.session.commit()
+
+    detalles = [{
+        'campo': 'fecha_programada',
+        'anterior': fecha_anterior.isoformat() if fecha_anterior else None,
+        'nuevo': nueva_fecha.isoformat(),
+    }]
+    desc = f"Mantenimiento {id_mantenimiento} reprogramado al {nueva_fecha.isoformat()}"
+    if observacion:
+        desc += f" ({observacion})"
+    if alertas_actualizadas:
+        desc += f" — {alertas_actualizadas} alerta(s) actualizada(s)"
+    log('REPROGRAMAR_MANTENIMIENTO', desc,
+        id_usuario=id_usuario, modulo='mantenimiento', detalles=detalles)
+    return jsonify(_serializar(m))
+
+
 @bp.get('/alertas')
 @jwt_required()
 @requiere_permiso('ver_mantenimientos')
@@ -126,6 +198,14 @@ def crear_alerta():
     db.session.commit()
     log('CREAR_ALERTA_MANTENIMIENTO', f"Alerta creada para mantenimiento {data['id_mantenimiento']}",
         id_usuario=id_usuario, modulo='mantenimiento')
+
+    notificaciones.emitir_a_permiso(
+        'ver_mantenimientos', 'alerta_mantenimiento',
+        'Nueva alerta de mantenimiento',
+        f"Se generó una alerta de mantenimiento para el establecimiento "
+        f"#{data['id_establecimiento']}.",
+        url='/mantenimiento/alertas', excluir_usuario=id_usuario,
+    )
     return jsonify(_serializar_alerta(alerta)), 201
 
 

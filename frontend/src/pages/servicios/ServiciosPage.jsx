@@ -120,6 +120,9 @@ export default function ServiciosPage() {
               onChange={e => setVerInactivos(e.target.checked)} />
             Ver inactivos
           </label>
+          {busqueda && (
+            <button className="btn btn-ghost" onClick={() => setBusqueda('')}>Limpiar</button>
+          )}
         </div>
       </div>
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { notificacionesApi } from '../../api/notificaciones'
 import {
   AlertTriangle, Wrench, FolderOpen, CreditCard, Package,
-  Bell, Check, CheckCheck, Trash2, ExternalLink,
+  Bell, Check, CheckCheck, Trash2, ExternalLink, SlidersHorizontal,
 } from 'lucide-react'
 
 function formatFecha(iso) {
@@ -40,6 +40,7 @@ export default function NotificacionesPage() {
   const [cargando, setCargando] = useState(true)
   const [filtro, setFiltro]     = useState('todas')
   const [tipo, setTipo]         = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [marcando, setMarcando] = useState(false)
 
   useEffect(() => { cargar() }, [])
@@ -90,6 +91,10 @@ export default function NotificacionesPage() {
     if (filtro === 'no_leidas' && n.leida)  return false
     if (filtro === 'leidas'    && !n.leida) return false
     if (tipo && n.tipo !== tipo)            return false
+    if (busqueda) {
+      const txt = ((n.titulo || '') + ' ' + (n.mensaje || '')).toLowerCase()
+      if (!txt.includes(busqueda.toLowerCase())) return false
+    }
     return true
   })
 
@@ -104,12 +109,18 @@ export default function NotificacionesPage() {
             {noLeidasCount > 0 ? `${noLeidasCount} sin leer` : 'Todo al día'}
           </p>
         </div>
-        {noLeidasCount > 0 && (
-          <button className="btn btn-primary" disabled={marcando} onClick={marcarTodas}>
-            <CheckCheck size={16} style={{ marginRight: 6 }} />
-            {marcando ? 'Marcando...' : 'Marcar todas como leídas'}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={() => navigate('/notificaciones/preferencias')}>
+            <SlidersHorizontal size={16} style={{ marginRight: 6 }} />
+            Preferencias
           </button>
-        )}
+          {noLeidasCount > 0 && (
+            <button className="btn btn-primary" disabled={marcando} onClick={marcarTodas}>
+              <CheckCheck size={16} style={{ marginRight: 6 }} />
+              {marcando ? 'Marcando...' : 'Marcar todas como leídas'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -131,7 +142,9 @@ export default function NotificacionesPage() {
             </button>
           ))}
 
-          <div style={{ flex: 1 }} />
+          <input className="input" style={{ flex: 1, minWidth: 180 }}
+            placeholder="Buscar en notificaciones..."
+            value={busqueda} onChange={e => setBusqueda(e.target.value)} />
 
           <select className="input" style={{ minWidth: 180 }}
             value={tipo}

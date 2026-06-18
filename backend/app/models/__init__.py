@@ -9,5 +9,5 @@ from .ordenes.orden import EstadoOrden, OrdenTrabajo, OrdenEmpleado, OrdenProduc
 from .mantenimiento.mantenimiento import Mantenimiento, AlertaMantenimiento
 from .bitacoras.bitacora_doc import BitacoraCliente, BitacoraProyecto, Documento
 from .finanzas.finanzas import Pago, GastoOrden
-from .notificaciones.notificacion import Notificacion
+from .notificaciones.notificacion import Notificacion, PreferenciaNotificacion
 from .auditoria.auditoria import Bitacora, BitacoraDetalle

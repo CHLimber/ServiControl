@@ -58,6 +58,8 @@ export default function FinanzasPage() {
   const [guardando, setGuardando]   = useState(false)
   const [errPago, setErrPago]       = useState('')
   const [errGasto, setErrGasto]     = useState('')
+  const [busqueda, setBusqueda]     = useState('')
+  const [filtroTipoPago, setFiltroTipoPago] = useState('')
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -146,6 +148,22 @@ export default function FinanzasPage() {
     return o ? o.codigo : `OT #${id}`
   }
 
+  const q = busqueda.toLowerCase()
+  const pagosFiltrados = pagos.filter(p => {
+    const txt = (nombreProyecto(p.id_proyecto) + ' ' + (p.metodo || '') + ' ' + (p.observacion || '')).toLowerCase()
+    const coincideBusqueda = txt.includes(q)
+    const coincideTipo = filtroTipoPago === '' || p.tipo_pago === filtroTipoPago
+    return coincideBusqueda && coincideTipo
+  })
+  const gastosFiltrados = gastos.filter(g => {
+    const txt = (nombreOrden(g.id_orden) + ' ' + (g.concepto || '') + ' ' + (g.descripcion || '') + ' ' + (g.usuario || '')).toLowerCase()
+    return txt.includes(q)
+  })
+  const cuentasFiltradas = cuentas.filter(c => {
+    const txt = ((c.codigo_proyecto || '') + ' ' + (c.titulo_proyecto || '') + ' ' + (c.cliente || '')).toLowerCase()
+    return txt.includes(q)
+  })
+
   return (
     <>
       <div className="page-header">
@@ -213,11 +231,34 @@ export default function FinanzasPage() {
         ))}
       </div>
 
+      {/* Filtros */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="input" style={{ flex: 1, minWidth: 200 }}
+            placeholder={tab === 'gastos' ? 'Buscar por orden, concepto o descripción...'
+                       : tab === 'cuentas' ? 'Buscar por proyecto o cliente...'
+                       : 'Buscar por proyecto, método u observación...'}
+            value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          {tab === 'pagos' && (
+            <select className="input" style={{ minWidth: 170 }}
+              value={filtroTipoPago} onChange={e => setFiltroTipoPago(e.target.value)}>
+              <option value="">Todos los tipos</option>
+              {TIPOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+          {(busqueda || filtroTipoPago) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroTipoPago('') }}>
+              Limpiar
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tab: Pagos */}
       {tab === 'pagos' && (
         <div className="card">
           {cargando ? <div className="empty-state">Cargando...</div> :
-           pagos.length === 0 ? <div className="empty-state">No hay pagos registrados.</div> : (
+           pagosFiltrados.length === 0 ? <div className="empty-state">No hay pagos registrados.</div> : (
             <div className="table-wrap">
               <table>
                 <thead>
@@ -231,7 +272,7 @@ export default function FinanzasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagos.map(p => (
+                  {pagosFiltrados.map(p => (
                     <tr key={p.id}>
                       <td className="text-sm">{nombreProyecto(p.id_proyecto)}</td>
                       <td><span className={`badge ${BADGE_TIPO[p.tipo_pago] || 'badge-gray'}`}>{p.tipo_pago}</span></td>
@@ -246,7 +287,7 @@ export default function FinanzasPage() {
             </div>
           )}
           <div className="text-muted text-sm" style={{ padding: '10px 0 0' }}>
-            {pagos.length} pago{pagos.length !== 1 ? 's' : ''} · Total: {formatBs(totalPagos)}
+            {pagosFiltrados.length} pago{pagosFiltrados.length !== 1 ? 's' : ''} · Total: {formatBs(totalPagos)}
           </div>
         </div>
       )}
@@ -263,7 +304,7 @@ export default function FinanzasPage() {
             </div>
           )}
           {cargando ? <div className="empty-state">Cargando...</div> :
-           gastos.length === 0 ? <div className="empty-state">No hay gastos registrados.</div> : (
+           gastosFiltrados.length === 0 ? <div className="empty-state">No hay gastos registrados.</div> : (
             <div className="table-wrap">
               <table>
                 <thead>
@@ -278,7 +319,7 @@ export default function FinanzasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {gastos.map(g => (
+                  {gastosFiltrados.map(g => (
                     <tr key={g.id}>
                       <td className="text-sm">{nombreOrden(g.id_orden)}</td>
                       <td><span className="badge badge-yellow">{g.concepto}</span></td>
@@ -302,7 +343,7 @@ export default function FinanzasPage() {
             </div>
           )}
           <div className="text-muted text-sm" style={{ padding: '10px 0 0' }}>
-            {gastos.length} gasto{gastos.length !== 1 ? 's' : ''} · Total: {formatBs(totalGastos)}
+            {gastosFiltrados.length} gasto{gastosFiltrados.length !== 1 ? 's' : ''} · Total: {formatBs(totalGastos)}
           </div>
         </div>
       )}
@@ -311,7 +352,7 @@ export default function FinanzasPage() {
       {tab === 'cuentas' && (
         <div className="card">
           {cargando ? <div className="empty-state">Cargando...</div> :
-           cuentas.length === 0 ? (
+           cuentasFiltradas.length === 0 ? (
             <div className="empty-state">
               <div className="icon"><CheckCircle size={32} /></div>
               <p>Sin saldos pendientes por cobrar.</p>
@@ -330,7 +371,7 @@ export default function FinanzasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cuentas.map(c => {
+                  {cuentasFiltradas.map(c => {
                     const pct = c.monto_total_cotizacion > 0
                       ? Math.round((c.total_pagado / c.monto_total_cotizacion) * 100)
                       : 0
@@ -368,9 +409,9 @@ export default function FinanzasPage() {
               </table>
             </div>
           )}
-          {cuentas.length > 0 && (
+          {cuentasFiltradas.length > 0 && (
             <div className="text-muted text-sm" style={{ padding: '10px 0 0' }}>
-              {cuentas.length} proyecto{cuentas.length !== 1 ? 's' : ''} con saldo pendiente ·
+              {cuentasFiltradas.length} proyecto{cuentasFiltradas.length !== 1 ? 's' : ''} con saldo pendiente ·
               Total: <strong style={{ color: 'var(--danger)' }}>{formatBs(totalPendiente)}</strong>
             </div>
           )}

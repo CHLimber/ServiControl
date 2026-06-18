@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { catalogosApi } from '../../api/catalogos'
 import { useAuth } from '../../context/AuthContext'
-import { RefreshCw, X } from 'lucide-react'
+import { RefreshCw, X, CalendarClock } from 'lucide-react'
 
 const ESTADOS  = ['pendiente', 'confirmado', 'reprogramado', 'completado', 'vencido']
 const TIPOS    = ['preventivo', 'correctivo']
@@ -27,10 +27,14 @@ function formatFecha(iso) {
 // API de mantenimiento inline (no hay archivo separado aún)
 import client from '../../api/client'
 const mantApi = {
-  listar:     ()           => client.get('/mantenimiento/'),
-  crear:      (data)       => client.post('/mantenimiento/', data),
-  actualizar: (id, data)   => client.put(`/mantenimiento/${id}`, data),
+  listar:      ()           => client.get('/mantenimiento/'),
+  crear:       (data)       => client.post('/mantenimiento/', data),
+  actualizar:  (id, data)   => client.put(`/mantenimiento/${id}`, data),
+  reprogramar: (id, data)   => client.put(`/mantenimiento/${id}/reprogramar`, data),
 }
+
+const ESTADOS_NO_REPROG = ['completado', 'vencido']
+const hoyISO = () => new Date().toISOString().slice(0, 10)
 
 const FORM_VACIO = {
   id_sistema: '', tipo: 'preventivo', fecha_programada: '',
@@ -56,6 +60,13 @@ export default function MantenimientoPage() {
   const [modalEstado, setModalEstado] = useState(null)
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [nuevaFecha, setNuevaFecha]   = useState('')
+
+  // CU41 — Reprogramar
+  const [modalReprog, setModalReprog]   = useState(null)
+  const [fechaReprog, setFechaReprog]   = useState('')
+  const [obsReprog, setObsReprog]       = useState('')
+  const [errReprog, setErrReprog]       = useState('')
+  const [reprogramando, setReprogramando] = useState(false)
 
   useEffect(() => { cargarDatos() }, [])
 
@@ -109,6 +120,39 @@ export default function MantenimientoPage() {
     }
   }
 
+  function abrirReprogramar(m) {
+    setModalReprog(m)
+    setFechaReprog('')
+    setObsReprog('')
+    setErrReprog('')
+  }
+
+  async function reprogramar(e) {
+    e.preventDefault()
+    setErrReprog('')
+    if (!fechaReprog) {
+      setErrReprog('Seleccioná la nueva fecha programada.')
+      return
+    }
+    if (fechaReprog <= hoyISO()) {
+      setErrReprog('La nueva fecha debe ser posterior a hoy.')
+      return
+    }
+    setReprogramando(true)
+    try {
+      const actualizado = await mantApi.reprogramar(modalReprog.id, {
+        fecha_programada: fechaReprog,
+        observacion: obsReprog,
+      })
+      setLista(prev => prev.map(m => m.id === modalReprog.id ? actualizado : m))
+      setModalReprog(null)
+    } catch (err) {
+      setErrReprog(err?.error || 'No se pudo reprogramar el mantenimiento.')
+    } finally {
+      setReprogramando(false)
+    }
+  }
+
   const nombreSistema = id => sistemas.find(s => s.id === id)?.nombre || `Sistema #${id}`
 
   const filtrados = lista.filter(m => {
@@ -152,7 +196,7 @@ export default function MantenimientoPage() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 180 }}
             placeholder="Buscar por sistema..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -161,6 +205,16 @@ export default function MantenimientoPage() {
             <option value="">Todos los tipos</option>
             {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <select className="input" style={{ minWidth: 150, textTransform: 'capitalize' }}
+            value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+            <option value="">Todos los estados</option>
+            {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          {(busqueda || filtroTipo || filtroEstado) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroTipo(''); setFiltroEstado('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 
@@ -197,10 +251,17 @@ export default function MantenimientoPage() {
                     </td>
                     <td>
                       {puedeGestionar && (
-                        <button className="btn btn-ghost btn-sm"
-                          onClick={() => { setModalEstado(m); setNuevoEstado(''); setNuevaFecha('') }}>
-                          <RefreshCw size={14} />
-                        </button>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-ghost btn-sm" title="Cambiar estado"
+                            onClick={() => { setModalEstado(m); setNuevoEstado(''); setNuevaFecha('') }}>
+                            <RefreshCw size={14} />
+                          </button>
+                          <button className="btn btn-ghost btn-sm" title="Reprogramar"
+                            disabled={ESTADOS_NO_REPROG.includes(m.estado)}
+                            onClick={() => abrirReprogramar(m)}>
+                            <CalendarClock size={14} />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -251,6 +312,46 @@ export default function MantenimientoPage() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setModalEstado(null)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary" disabled={!nuevoEstado}>Confirmar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal reprogramar (CU41) */}
+      {modalReprog && (
+        <div className="modal-overlay" onClick={() => setModalReprog(null)}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Reprogramar mantenimiento</h2>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModalReprog(null)}><X size={14} /></button>
+            </div>
+            <form onSubmit={reprogramar}>
+              <div className="modal-body">
+                <p className="text-sm text-muted" style={{ marginBottom: 16 }}>
+                  Sistema: <strong>{nombreSistema(modalReprog.id_sistema)}</strong>
+                  {' · '}{modalReprog.tipo}
+                  <br />
+                  Fecha actual: <strong>{formatFecha(modalReprog.fecha_programada)}</strong>
+                </p>
+                <div className="form-group">
+                  <label className="form-label">Nueva fecha programada *</label>
+                  <input type="date" className="input" value={fechaReprog} min={hoyISO()}
+                    onChange={e => setFechaReprog(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Observación de reprogramación</label>
+                  <textarea className="input" rows={3} value={obsReprog}
+                    onChange={e => setObsReprog(e.target.value)}
+                    placeholder="Motivo del cambio de fecha (opcional)" />
+                </div>
+                {errReprog && <div className="alert alert-danger" style={{ marginTop: 4 }}>{errReprog}</div>}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setModalReprog(null)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={reprogramando}>
+                  {reprogramando ? 'Reprogramando...' : 'Reprogramar'}
+                </button>
               </div>
             </form>
           </div>

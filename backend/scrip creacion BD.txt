@@ -627,6 +627,17 @@ CREATE TABLE notificacion (
   INDEX idx_notificacion_tipo (tipo)
 );
 
+CREATE TABLE preferencia_notificacion (
+  id                 	INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario         	INT NOT NULL,
+  tipo               	ENUM('alerta_mantenimiento','orden_asignada','proyecto_actualizado','pago_registrado','stock_critico') NOT NULL,
+  en_centro          	BOOLEAN NOT NULL DEFAULT TRUE,
+  en_correo          	BOOLEAN NOT NULL DEFAULT TRUE,
+
+  CONSTRAINT fk_pref_notif_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE,
+  CONSTRAINT uq_pref_usuario_tipo UNIQUE (id_usuario, tipo)
+);
+
 -- ============================================================
 -- MÓDULO 10: AUDITORÍA (BITÁCORA DE SISTEMA)
 -- ============================================================

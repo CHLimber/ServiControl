@@ -51,6 +51,10 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
     STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
+    # Claude (Anthropic) — usado por el reporte financiero por IA (CU43-IA)
+    ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+    ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-opus-4-8')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

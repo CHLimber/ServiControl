@@ -108,14 +108,20 @@ def seed_passwords():
 
 
 def aplicar_migraciones_permisos():
-    """Inserta permisos nuevos y los asigna al rol Administrador si aún no existen."""
+    """Inserta permisos nuevos y los asigna a los roles indicados si aún no existen.
+
+    Cada tupla: (nombre, descripcion, [roles que lo reciben]).
+    El Administrador siempre recibe el permiso aunque no esté en la lista.
+    """
     permisos_nuevos = [
-        ('gestionar_roles',     'Gestionar roles y permisos del sistema'),
-        ('gestionar_empleados', 'Crear, editar y desactivar empleados'),
+        ('gestionar_roles',     'Gestionar roles y permisos del sistema',         []),
+        ('gestionar_empleados', 'Crear, editar y desactivar empleados',           []),
+        ('consultar_proveedores', 'Consultar el catálogo de proveedores y precios',
+            ['Técnico Superior']),
     ]
     conn = get_conn()
     cursor = conn.cursor()
-    for nombre, descripcion in permisos_nuevos:
+    for nombre, descripcion, roles_extra in permisos_nuevos:
         cursor.execute("SELECT COUNT(*) FROM permiso WHERE nombre=%s", (nombre,))
         if cursor.fetchone()[0] == 0:
             cursor.execute(
@@ -124,14 +130,16 @@ def aplicar_migraciones_permisos():
             )
             cursor.execute("SELECT LAST_INSERT_ID()")
             id_permiso = cursor.fetchone()[0]
-            cursor.execute("SELECT id FROM rol WHERE nombre='Administrador'")
-            row = cursor.fetchone()
-            if row:
-                cursor.execute(
-                    "INSERT IGNORE INTO rol_permiso (id_rol, id_permiso) VALUES (%s, %s)",
-                    (row[0], id_permiso),
-                )
-            print(f"  + permiso '{nombre}' (id={id_permiso}) asignado a Administrador")
+            for rol_nombre in ['Administrador', *roles_extra]:
+                cursor.execute("SELECT id FROM rol WHERE nombre=%s", (rol_nombre,))
+                row = cursor.fetchone()
+                if row:
+                    cursor.execute(
+                        "INSERT IGNORE INTO rol_permiso (id_rol, id_permiso) VALUES (%s, %s)",
+                        (row[0], id_permiso),
+                    )
+            destinos = ', '.join(['Administrador', *roles_extra])
+            print(f"  + permiso '{nombre}' (id={id_permiso}) asignado a {destinos}")
     conn.commit()
     cursor.close()
     conn.close()
@@ -228,6 +236,48 @@ def aplicar_migraciones_pendientes():
                 fecha_creacion DATETIME NOT NULL DEFAULT NOW(),
                 CONSTRAINT fk_bitcli_entidad FOREIGN KEY (id_entidad) REFERENCES entidad(id) ON DELETE CASCADE,
                 CONSTRAINT fk_bitcli_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'bitacora_proyecto',
+            """CREATE TABLE IF NOT EXISTS bitacora_proyecto (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                id_proyecto INT NOT NULL,
+                id_usuario INT NOT NULL,
+                nota TEXT NOT NULL,
+                fecha_creacion DATETIME NOT NULL DEFAULT NOW(),
+                CONSTRAINT fk_bitproy_proyecto FOREIGN KEY (id_proyecto) REFERENCES proyecto(id) ON DELETE CASCADE,
+                CONSTRAINT fk_bitproy_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'documento',
+            """CREATE TABLE IF NOT EXISTS documento (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                id_proyecto INT NULL,
+                id_entidad INT NULL,
+                id_usuario INT NOT NULL,
+                id_tipo_documento INT NOT NULL,
+                nombre VARCHAR(255) NOT NULL,
+                ruta VARCHAR(500) NOT NULL,
+                fecha_subida DATETIME NOT NULL DEFAULT NOW(),
+                descripcion TEXT NULL,
+                CONSTRAINT fk_doc_proyecto FOREIGN KEY (id_proyecto) REFERENCES proyecto(id) ON DELETE CASCADE,
+                CONSTRAINT fk_doc_entidad FOREIGN KEY (id_entidad) REFERENCES entidad(id) ON DELETE CASCADE,
+                CONSTRAINT fk_doc_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id),
+                CONSTRAINT fk_doc_tipo FOREIGN KEY (id_tipo_documento) REFERENCES tipo_documento(id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+        ),
+        (
+            'preferencia_notificacion',
+            """CREATE TABLE IF NOT EXISTS preferencia_notificacion (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                id_usuario INT NOT NULL,
+                tipo ENUM('alerta_mantenimiento','orden_asignada','proyecto_actualizado','pago_registrado','stock_critico') NOT NULL,
+                en_centro BOOLEAN NOT NULL DEFAULT TRUE,
+                en_correo BOOLEAN NOT NULL DEFAULT TRUE,
+                CONSTRAINT fk_pref_notif_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE,
+                CONSTRAINT uq_pref_usuario_tipo UNIQUE (id_usuario, tipo)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
         ),
     ]

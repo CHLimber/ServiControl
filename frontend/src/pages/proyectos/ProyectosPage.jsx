@@ -38,6 +38,8 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
   const [error, setError]             = useState(null)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [busqueda, setBusqueda]       = useState('')
+  const [filtroDesde, setFiltroDesde] = useState('')
+  const [filtroHasta, setFiltroHasta] = useState('')
 
   // Detalle (CU21)
   const [detalle, setDetalle]             = useState(null)
@@ -231,7 +233,10 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
   const filtrados = proyectos.filter(p => {
     const coincideEstado = filtroEstado === '' || p.estado_nombre === filtroEstado
     const coincideBusqueda = (p.titulo + p.codigo).toLowerCase().includes(busqueda.toLowerCase())
-    return coincideEstado && coincideBusqueda
+    const fecha = p.fecha_inicio ? p.fecha_inicio.slice(0, 10) : ''
+    const coincideDesde = !filtroDesde || (fecha && fecha >= filtroDesde)
+    const coincideHasta = !filtroHasta || (fecha && fecha <= filtroHasta)
+    return coincideEstado && coincideBusqueda && coincideDesde && coincideHasta
   })
 
   const nombresEstado = [...new Set(proyectos.map(p => p.estado_nombre).filter(Boolean))]
@@ -250,7 +255,7 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 200 }}
             placeholder="Buscar por título o código..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -259,6 +264,22 @@ export default function ProyectosPage({ abrirCrearInicial = false }) {
             <option value="">Todos los estados</option>
             {nombresEstado.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Desde
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroDesde} onChange={e => setFiltroDesde(e.target.value)} />
+          </label>
+          <label className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            Hasta
+            <input type="date" className="input" style={{ minWidth: 150 }}
+              value={filtroHasta} onChange={e => setFiltroHasta(e.target.value)} />
+          </label>
+          {(busqueda || filtroEstado || filtroDesde || filtroHasta) && (
+            <button className="btn btn-ghost"
+              onClick={() => { setBusqueda(''); setFiltroEstado(''); setFiltroDesde(''); setFiltroHasta('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

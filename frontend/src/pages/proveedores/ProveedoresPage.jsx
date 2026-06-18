@@ -234,7 +234,7 @@ export default function ProveedoresPage() {
 
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <input className="input" style={{ flex: 1, minWidth: 200 }}
             placeholder="Buscar por nombre, email o dirección..."
             value={busqueda} onChange={e => setBusqueda(e.target.value)} />
@@ -243,6 +243,11 @@ export default function ProveedoresPage() {
             <option value="">Todos los departamentos</option>
             {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
+          {(busqueda || filtroDep) && (
+            <button className="btn btn-ghost" onClick={() => { setBusqueda(''); setFiltroDep('') }}>
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 

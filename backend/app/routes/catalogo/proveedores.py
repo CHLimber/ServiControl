@@ -5,7 +5,7 @@ from ...extensions import db
 from ...models.catalogo.proveedor import Proveedor, DEPARTAMENTOS
 from ...models.catalogo.catalogo import Telefono
 from ...utils.bitacora import log
-from ...utils.permisos import requiere_permiso
+from ...utils.permisos import requiere_permiso, requiere_alguno
 
 bp = Blueprint('proveedores', __name__)
 
@@ -181,6 +181,74 @@ def desactivar(id_proveedor):
     log('DESACTIVAR_PROVEEDOR', f"Proveedor {id_proveedor} '{p.nombre}' desactivado",
         id_usuario=int(get_jwt_identity()), modulo='proveedores')
     return jsonify({'mensaje': 'Proveedor desactivado'})
+
+
+# ── CU39: Consulta del catálogo de proveedores (solo lectura) ───
+# Accesible para Administrador y Técnico Superior. No modifica datos.
+
+@bp.get('/catalogo')
+@jwt_required()
+@requiere_alguno('consultar_proveedores', 'gestionar_catalogo')
+def catalogo_listar():
+    """Lista los proveedores activos con la cantidad de productos asociados."""
+    proveedores = (Proveedor.query
+                   .filter_by(estado=True)
+                   .order_by(Proveedor.nombre)
+                   .all())
+    conteos = dict(db.session.execute(
+        text("SELECT id_proveedor, COUNT(*) FROM producto_proveedor GROUP BY id_proveedor")
+    ).fetchall())
+    return jsonify([{
+        'id':           p.id,
+        'nombre':       p.nombre,
+        'email':        p.email,
+        'direccion':    p.direccion,
+        'departamento': p.departamento,
+        'cant_productos': int(conteos.get(p.id, 0)),
+    } for p in proveedores])
+
+
+@bp.get('/catalogo/<int:id_proveedor>/productos')
+@jwt_required()
+@requiere_alguno('consultar_proveedores', 'gestionar_catalogo')
+def catalogo_productos(id_proveedor):
+    """Productos asociados a un proveedor con precio y unidad de medida.
+
+    Filtros opcionales: q (nombre/código de producto), categoria (nombre exacto).
+    """
+    db.get_or_404(Proveedor, id_proveedor)
+    q         = (request.args.get('q') or '').strip()
+    categoria = (request.args.get('categoria') or '').strip()
+
+    sql = (
+        "SELECT pp.id_producto, p.codigo, p.nombre, p.unidad_medida, "
+        "       cat.nombre AS categoria, pp.precio_unitario, pp.es_principal, "
+        "       pp.fecha_actualizacion "
+        "FROM producto_proveedor pp "
+        "JOIN producto p    ON pp.id_producto = p.id "
+        "JOIN categoria cat ON p.id_categoria = cat.id "
+        "WHERE pp.id_proveedor = :id AND p.estado = TRUE "
+    )
+    params = {'id': id_proveedor}
+    if q:
+        sql += "AND (p.nombre LIKE :q OR p.codigo LIKE :q) "
+        params['q'] = f'%{q}%'
+    if categoria:
+        sql += "AND cat.nombre = :cat "
+        params['cat'] = categoria
+    sql += "ORDER BY p.nombre"
+
+    rows = db.session.execute(text(sql), params).fetchall()
+    return jsonify([{
+        'id_producto':         r[0],
+        'codigo':              r[1],
+        'nombre':              r[2],
+        'unidad_medida':       r[3],
+        'categoria':           r[4],
+        'precio_unitario':     float(r[5]),
+        'es_principal':        bool(r[6]),
+        'fecha_actualizacion': r[7].isoformat() if r[7] else None,
+    } for r in rows])
 
 
 # ── CU08: CRUD independiente de teléfonos de proveedor ──────────
