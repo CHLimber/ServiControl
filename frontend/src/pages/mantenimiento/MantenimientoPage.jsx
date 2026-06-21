@@ -34,7 +34,10 @@ const mantApi = {
 }
 
 const ESTADOS_NO_REPROG = ['completado', 'vencido']
-const hoyISO = () => new Date().toISOString().slice(0, 10)
+const hoyISO = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const FORM_VACIO = {
   id_sistema: '', tipo: 'preventivo', fecha_programada: '',
