@@ -6,6 +6,7 @@ from ...models.ordenes.orden import OrdenTrabajo, OrdenEmpleado, OrdenProducto, 
 from ...models.entidades.entidad import Empleado
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
+from ...utils import notificaciones
 
 bp = Blueprint('ordenes', __name__)
 
@@ -104,6 +105,14 @@ def crear():
 
     log('CREAR_ORDEN', f"Orden {codigo} creada para proyecto {data['id_proyecto']}",
         id_usuario=id_usuario, modulo='ordenes')
+
+    notificaciones.emitir_a_empleados(
+        [e.get('id_empleado') for e in data.get('empleados', [])],
+        'orden_asignada',
+        'Nueva orden de trabajo asignada',
+        f"Se te asignó la orden de trabajo {codigo}.",
+        url='/ordenes', excluir_usuario=id_usuario,
+    )
     return jsonify(_serializar(orden, detalle=True)), 201
 
 
@@ -191,7 +200,11 @@ def actualizar_empleados(id_orden):
     data = request.get_json()
     id_usuario = int(get_jwt_identity())
 
+    previos = {oe.id_empleado for oe in
+               OrdenEmpleado.query.filter_by(id_orden_trabajo=id_orden).all()}
+
     OrdenEmpleado.query.filter_by(id_orden_trabajo=id_orden).delete()
+    nuevos = []
     for emp in data.get('empleados', []):
         if not emp.get('id_empleado'):
             continue
@@ -200,10 +213,19 @@ def actualizar_empleados(id_orden):
             id_empleado=emp['id_empleado'],
             es_responsable=emp.get('es_responsable', False),
         ))
+        if emp['id_empleado'] not in previos:
+            nuevos.append(emp['id_empleado'])
 
     db.session.commit()
     log('ACTUALIZAR_EMPLEADOS_OT', f"Personal actualizado en orden {o.codigo}",
         id_usuario=id_usuario, modulo='ordenes')
+
+    notificaciones.emitir_a_empleados(
+        nuevos, 'orden_asignada',
+        'Nueva orden de trabajo asignada',
+        f"Se te asignó la orden de trabajo {o.codigo}.",
+        url='/ordenes', excluir_usuario=id_usuario,
+    )
     return jsonify(_serializar(o, detalle=True))
 
 

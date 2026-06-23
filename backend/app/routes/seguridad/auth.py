@@ -65,7 +65,7 @@ def login():
             db.session.commit()
             log('LOGIN_BLOQUEADO', f"Usuario '{username}' bloqueado {minutos}min (bloqueo #{usuario.veces_bloqueado})",
             usuario=username, id_usuario=usuario.id, modulo='auth')
-            correo.notificar_cuenta_bloqueada(usuario.email, username, minutos)
+            correo.notificar_cuenta_bloqueada(usuario.email, username, minutos, id_usuario=usuario.id)
             return jsonify({
                 'error': f'Cuenta bloqueada por {minutos} minuto(s) tras {max_intentos} intentos fallidos.',
                 'bloqueado_hasta': usuario.bloqueado_hasta.isoformat(),
@@ -75,7 +75,7 @@ def login():
         db.session.commit()
         log('LOGIN_FALLIDO', f"Contraseña incorrecta para '{username}' — intento {usuario.intentos_fallidos}/{max_intentos}",
             usuario=username, id_usuario=usuario.id, modulo='auth')
-        correo.notificar_intento_fallido(usuario.email, username, usuario.intentos_fallidos, restantes)
+        correo.notificar_intento_fallido(usuario.email, username, usuario.intentos_fallidos, restantes, id_usuario=usuario.id)
         return jsonify({'error': f'Credenciales inválidas. Intentos restantes: {restantes}.'}), 401
 
     usuario.intentos_fallidos = 0
@@ -182,6 +182,6 @@ def update_perfil():
         usuario=usuario.username, id_usuario=usuario.id, modulo='auth')
 
     if 'password' in cambios:
-        correo.notificar_cambio_password(usuario.email, usuario.username)
+        correo.notificar_cambio_password(usuario.email, usuario.username, id_usuario=usuario.id)
 
     return jsonify({'mensaje': 'Perfil actualizado correctamente'})

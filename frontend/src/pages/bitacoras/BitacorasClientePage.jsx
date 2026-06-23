@@ -19,6 +19,7 @@ export default function BitacorasClientePage() {
   const [nuevaNota, setNuevaNota]           = useState('')
   const [guardandoNota, setGuardandoNota]   = useState(false)
   const [busqueda, setBusqueda]             = useState('')
+  const [filtroTipo, setFiltroTipo]         = useState('')
 
   useEffect(() => { cargarClientes() }, [])
 
@@ -65,9 +66,11 @@ export default function BitacorasClientePage() {
     }
   }
 
-  const clientesFiltrados = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const clientesFiltrados = clientes.filter(c => {
+    const coincideBusqueda = c.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    const coincideTipo = filtroTipo === '' || c.tipo === filtroTipo
+    return coincideBusqueda && coincideTipo
+  })
 
   return (
     <>
@@ -82,7 +85,7 @@ export default function BitacorasClientePage() {
 
         {/* Panel izquierdo: lista de clientes */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input
               className="input"
               placeholder="Buscar cliente..."
@@ -90,6 +93,12 @@ export default function BitacorasClientePage() {
               onChange={e => setBusqueda(e.target.value)}
               style={{ width: '100%' }}
             />
+            <select className="input" style={{ width: '100%' }}
+              value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
+              <option value="">Todos los tipos</option>
+              <option value="natural">Persona natural</option>
+              <option value="juridica">Persona jurídica</option>
+            </select>
           </div>
           {cargandoClientes ? (
             <div className="empty-state" style={{ padding: 20 }}>Cargando...</div>
