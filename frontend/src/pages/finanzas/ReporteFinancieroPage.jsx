@@ -222,45 +222,61 @@ function ReportesEstaticos() {
 // ── Pestaña: Reporte por IA (Claude + dictado de voz) ─────────────
 
 const EJEMPLOS_IA = [
-  '¿Cómo evolucionó la utilidad mes a mes este año?',
-  '¿Qué proyectos generaron más gastos y por qué deberíamos revisarlos?',
-  'Dame un resumen ejecutivo de la situación financiera y 3 recomendaciones.',
-  '¿Qué método o tipo de pago concentra la mayor parte de los ingresos?',
+  'Resumen ejecutivo del año: ingresos, gastos, utilidad y 3 recomendaciones.',
+  '¿Cómo evolucionó la utilidad mes a mes? Identificá los meses críticos.',
+  '¿Qué proyectos tuvieron la mayor y menor utilidad? ¿Cuáles revisar?',
+  '¿Cuál es la distribución de ingresos por tipo y método de pago?',
+  '¿Qué cliente generó más ingresos y cómo está su historial de pagos?',
+  'Analizá los gastos por concepto e identificá dónde se puede reducir.',
 ]
 
-// Renderiza el texto del análisis con formato ligero (negritas y viñetas)
-function AnalisisTexto({ texto }) {
-  const lineas = texto.split('\n')
+function SeccionTablaIA({ sec }) {
+  const esMonto = col => /bs|monto|ingreso|gasto|utilidad|saldo|total|cobrado|pagado/i.test(col)
   return (
-    <div style={{ lineHeight: 1.6, fontSize: 14 }}>
-      {lineas.map((linea, i) => {
-        if (linea.trim() === '') return <div key={i} style={{ height: 8 }} />
-        const esVineta = /^\s*[-*•]\s+/.test(linea)
-        const contenido = linea.replace(/^\s*[-*•]\s+/, '')
-        const partes = contenido.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
-          p.startsWith('**') && p.endsWith('**')
-            ? <strong key={j}>{p.slice(2, -2)}</strong>
-            : <span key={j}>{p}</span>
-        )
-        return esVineta ? (
-          <div key={i} style={{ display: 'flex', gap: 8, paddingLeft: 4, marginBottom: 2 }}>
-            <span style={{ color: 'var(--accent)' }}>•</span>
-            <span>{partes}</span>
-          </div>
-        ) : (
-          <div key={i} style={{ marginBottom: 2 }}>{partes}</div>
-        )
-      })}
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ fontWeight: 600, marginBottom: 14 }}>{sec.titulo}</div>
+      {!sec.filas?.length ? (
+        <div className="empty-state">Sin datos para esta sección.</div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                {sec.columnas.map(c => (
+                  <th key={c} style={esMonto(c) ? { textAlign: 'right' } : undefined}>{c}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sec.filas.map((fila, j) => (
+                <tr key={j}>
+                  {fila.map((v, k) => {
+                    const esNum = typeof v === 'number'
+                    const esMon = esMonto(sec.columnas[k])
+                    return (
+                      <td key={k} style={(esNum || esMon) ? { textAlign: 'right', fontWeight: esNum ? 500 : undefined } : undefined}>
+                        {esMon && esNum ? formatBs(v) : v}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
 
 function ReporteIA() {
-  const [consulta, setConsulta]   = useState('')
-  const [analisis, setAnalisis]   = useState(null)
-  const [resumen, setResumen]     = useState(null)
-  const [cargando, setCargando]   = useState(false)
-  const [error, setError]         = useState('')
+  const [consulta, setConsulta]     = useState('')
+  const [resultado, setResultado]   = useState(null)
+  const [resumen, setResumen]       = useState(null)
+  const [periodo, setPeriodo]       = useState(null)
+  const [cargando, setCargando]     = useState(false)
+  const [exportando, setExportando] = useState('')
+  const [error, setError]           = useState('')
   const [escuchando, setEscuchando] = useState(false)
   const recognitionRef = useRef(null)
 
@@ -282,7 +298,7 @@ function ReporteIA() {
       setConsulta(prev => (prev ? prev.trim() + ' ' : '') + texto)
     }
     rec.onerror = () => setEscuchando(false)
-    rec.onend = () => setEscuchando(false)
+    rec.onend   = () => setEscuchando(false)
     recognitionRef.current = rec
     setEscuchando(true)
     rec.start()
@@ -291,11 +307,12 @@ function ReporteIA() {
   async function generar(textoConsulta) {
     const q = (textoConsulta ?? consulta).trim()
     if (!q) { setError('Escribí o dictá una consulta.'); return }
-    setError(''); setCargando(true); setAnalisis(null)
+    setError(''); setCargando(true); setResultado(null)
     try {
       const data = await finanzasApi.reporteIA({ consulta: q })
-      setAnalisis(data.analisis)
+      setResultado(data.reporte)
       setResumen(data.resumen)
+      setPeriodo(data.periodo)
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo generar el análisis por IA.')
     } finally {
@@ -303,16 +320,29 @@ function ReporteIA() {
     }
   }
 
+  async function exportar(formato) {
+    setExportando(formato); setError('')
+    try {
+      const blob = await finanzasApi.exportarReporteIA({ reporte: resultado, resumen, periodo, formato })
+      descargarBlob(blob, `reporte_ia_${new Date().toISOString().slice(0,10)}.${formato}`)
+    } catch {
+      setError('No se pudo exportar el reporte.')
+    } finally {
+      setExportando('')
+    }
+  }
+
   return (
     <>
+      {/* Panel de consulta */}
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
           <Sparkles size={18} style={{ color: 'var(--accent)', marginTop: 2 }} />
           <div>
             <div style={{ fontWeight: 600 }}>Asistente financiero con IA</div>
             <p className="text-muted text-sm" style={{ margin: 0 }}>
-              Hacé una pregunta en lenguaje natural sobre las finanzas del año en curso.
-              Podés escribir o usar el dictado por voz. El análisis lo genera Claude.
+              Hacé una pregunta sobre las finanzas del año en curso y Claude generará
+              un reporte estructurado con tablas y conclusiones exportable a PDF o Excel.
             </p>
           </div>
         </div>
@@ -322,20 +352,16 @@ function ReporteIA() {
             className="input"
             rows={3}
             style={{ resize: 'vertical', paddingRight: 48 }}
-            placeholder="Ej: ¿Cómo está la utilidad este año y qué deberíamos mejorar?"
+            placeholder="Ej: Resumen ejecutivo del año con ingresos, gastos y recomendaciones."
             value={consulta}
             onChange={e => setConsulta(e.target.value)}
           />
           {vozSoportada && (
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
+            <button type="button" className="btn btn-ghost btn-sm"
               title={escuchando ? 'Detener dictado' : 'Dictar por voz'}
               onClick={toggleDictado}
-              style={{
-                position: 'absolute', top: 8, right: 8,
-                color: escuchando ? 'var(--danger)' : 'var(--text-muted)',
-              }}>
+              style={{ position: 'absolute', top: 8, right: 8,
+                color: escuchando ? 'var(--danger)' : 'var(--text-muted)' }}>
               {escuchando ? <MicOff size={16} /> : <Mic size={16} />}
             </button>
           )}
@@ -343,29 +369,38 @@ function ReporteIA() {
 
         {escuchando && (
           <div className="text-sm" style={{ color: 'var(--danger)', marginTop: 6 }}>
-            🎙 Escuchando… hablá ahora.
+            Escuchando… hablá ahora.
           </div>
         )}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
           <button className="btn btn-primary" onClick={() => generar()} disabled={cargando}>
             <Sparkles size={15} style={{ marginRight: 6 }} />
-            {cargando ? 'Analizando…' : 'Generar análisis'}
+            {cargando ? 'Generando reporte…' : 'Generar reporte'}
           </button>
-          {!vozSoportada && (
-            <span className="text-muted text-sm" style={{ alignSelf: 'center' }}>
-              (El dictado por voz no está disponible en este navegador.)
-            </span>
+          {resultado && !cargando && (
+            <>
+              <button className="btn btn-ghost" onClick={() => exportar('pdf')} disabled={!!exportando}>
+                <FileText size={15} style={{ marginRight: 6 }} />
+                {exportando === 'pdf' ? 'Exportando…' : 'PDF'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => exportar('xlsx')} disabled={!!exportando}>
+                <FileSpreadsheet size={15} style={{ marginRight: 6 }} />
+                {exportando === 'xlsx' ? 'Exportando…' : 'Excel'}
+              </button>
+              <button className="btn btn-ghost" onClick={() => window.print()}>
+                <Printer size={14} style={{ marginRight: 6 }} />Imprimir
+              </button>
+            </>
           )}
         </div>
 
-        {/* Ejemplos rápidos */}
         <div style={{ marginTop: 14 }}>
           <div className="text-muted text-sm" style={{ marginBottom: 6 }}>Ejemplos:</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {EJEMPLOS_IA.map(ej => (
               <button key={ej} className="btn btn-ghost btn-sm"
-                style={{ fontSize: 12, whiteSpace: 'normal', textAlign: 'left' }}
+                style={{ fontSize: 12, whiteSpace: 'normal', textAlign: 'left', maxWidth: 320 }}
                 onClick={() => { setConsulta(ej); generar(ej) }} disabled={cargando}>
                 {ej}
               </button>
@@ -376,37 +411,41 @@ function ReporteIA() {
         {error && <div className="alert alert-danger" style={{ marginTop: 12 }}>{error}</div>}
       </div>
 
+      {/* Cargando */}
       {cargando && (
         <div className="card">
           <div className="empty-state" style={{ padding: '40px 0' }}>
             <Sparkles size={32} style={{ color: 'var(--accent)', marginBottom: 12 }} />
-            <p>Claude está analizando los datos financieros…</p>
+            <p>Claude está generando el reporte…</p>
           </div>
         </div>
       )}
 
-      {analisis && !cargando && (
-        <div className="card">
+      {/* Resultado estructurado */}
+      {resultado && !cargando && (
+        <>
+          {/* KPIs */}
           {resumen && (
-            <div className="stats-grid" style={{ marginBottom: 18 }}>
+            <div className="stats-grid" style={{ marginBottom: 20 }}>
               <div className="stat-card">
                 <div className="stat-icon green"><TrendingUp size={20} /></div>
                 <div className="stat-info">
                   <div className="stat-value">{formatBs(resumen.total_ingresos)}</div>
-                  <div className="stat-label">Ingresos</div>
+                  <div className="stat-label">Ingresos · {resumen.cantidad_pagos} pagos</div>
                 </div>
               </div>
               <div className="stat-card">
                 <div className="stat-icon red"><TrendingDown size={20} /></div>
                 <div className="stat-info">
                   <div className="stat-value">{formatBs(resumen.total_gastos)}</div>
-                  <div className="stat-label">Gastos</div>
+                  <div className="stat-label">Gastos · {resumen.cantidad_gastos} registros</div>
                 </div>
               </div>
               <div className="stat-card">
                 <div className="stat-icon blue"><Activity size={20} /></div>
                 <div className="stat-info">
-                  <div className="stat-value" style={{ color: resumen.utilidad >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  <div className="stat-value"
+                    style={{ color: resumen.utilidad >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {formatBs(resumen.utilidad)}
                   </div>
                   <div className="stat-label">Utilidad neta</div>
@@ -414,19 +453,40 @@ function ReporteIA() {
               </div>
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-            <span style={{ fontWeight: 600 }}>Análisis generado por IA</span>
-            <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }}
-              onClick={() => window.print()}>
-              <Printer size={14} style={{ marginRight: 6 }} />Imprimir
-            </button>
+
+          {/* Encabezado del reporte */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={16} style={{ color: 'var(--accent)' }} />
+              <span style={{ fontWeight: 600, fontSize: '1rem' }}>{resultado.titulo}</span>
+            </div>
+            {resultado.introduccion && (
+              <p className="text-muted text-sm" style={{ margin: '8px 0 0' }}>
+                {resultado.introduccion}
+              </p>
+            )}
           </div>
-          <AnalisisTexto texto={analisis} />
-          <p className="text-muted text-sm" style={{ marginTop: 16, marginBottom: 0, fontStyle: 'italic' }}>
-            Generado por Claude a partir de los datos del período. Verificá las cifras antes de tomar decisiones.
-          </p>
-        </div>
+
+          {/* Secciones con tablas */}
+          {resultado.secciones?.map((sec, i) => (
+            <SeccionTablaIA key={i} sec={sec} />
+          ))}
+
+          {/* Conclusiones */}
+          {resultado.conclusiones?.length > 0 && (
+            <div className="card">
+              <div style={{ fontWeight: 600, marginBottom: 12 }}>Conclusiones y recomendaciones</div>
+              <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.8 }}>
+                {resultado.conclusiones.map((c, i) => (
+                  <li key={i} style={{ fontSize: 14, marginBottom: 2 }}>{c}</li>
+                ))}
+              </ul>
+              <p className="text-muted text-sm" style={{ marginTop: 14, marginBottom: 0, fontStyle: 'italic' }}>
+                Generado por Claude a partir de los datos reales del período. Verificá las cifras antes de tomar decisiones.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </>
   )

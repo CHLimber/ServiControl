@@ -1,3 +1,4 @@
+import re
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
@@ -10,6 +11,24 @@ from ...utils.permisos import requiere_permiso
 from ...utils.timezone import ahora_bolivia
 
 bp = Blueprint('usuarios', __name__)
+
+_RE_MAYUS   = re.compile(r'[A-Z]')
+_RE_MINUS   = re.compile(r'[a-z]')
+_RE_NUMERO  = re.compile(r'[0-9]')
+_RE_ESPECIAL = re.compile(r'[!@#$%^&*()\-_=+\[\]{}|;:\'",.<>?/\\`~]')
+
+def _validar_password(pwd: str) -> str | None:
+    if len(pwd) < 8:
+        return 'La contraseña debe tener al menos 8 caracteres.'
+    if not _RE_MAYUS.search(pwd):
+        return 'La contraseña debe incluir al menos una letra mayúscula.'
+    if not _RE_MINUS.search(pwd):
+        return 'La contraseña debe incluir al menos una letra minúscula.'
+    if not _RE_NUMERO.search(pwd):
+        return 'La contraseña debe incluir al menos un número.'
+    if not _RE_ESPECIAL.search(pwd):
+        return 'La contraseña debe incluir al menos un carácter especial (!@#$%^&* etc.).'
+    return None
 
 
 @bp.get('/')
@@ -47,8 +66,9 @@ def crear():
         if not data.get(campo):
             return jsonify({'error': f'El campo {campo} es requerido'}), 400
 
-    if len(data['password']) < 6:
-        return jsonify({'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+    err_pwd = _validar_password(data['password'])
+    if err_pwd:
+        return jsonify({'error': err_pwd}), 400
 
     if Usuario.query.filter_by(username=data['username'].strip()).first():
         return jsonify({'error': 'Ya existe un usuario con ese username'}), 409
@@ -104,8 +124,9 @@ def actualizar(id_usuario):
 
     cambio_password = False
     if 'password' in data and data['password']:
-        if len(data['password']) < 6:
-            return jsonify({'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+        err_pwd = _validar_password(data['password'])
+        if err_pwd:
+            return jsonify({'error': err_pwd}), 400
         u.password = generate_password_hash(data['password'])
         cambio_password = True
 

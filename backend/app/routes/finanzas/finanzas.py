@@ -173,6 +173,8 @@ def _filtros_reporte(args):
     fi = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date() if fecha_inicio_str else None
     ff = datetime.strptime(fecha_fin_str,    '%Y-%m-%d').date() if fecha_fin_str    else None
 
+    _pid = args.get('id_proyecto')
+    _eid = args.get('id_entidad')
     return {
         'fecha_inicio': fecha_inicio_str,
         'fecha_fin':    fecha_fin_str,
@@ -181,8 +183,8 @@ def _filtros_reporte(args):
         'tipo_pago':    (args.get('tipo_pago') or '').strip(),
         'metodo':       (args.get('metodo') or '').strip(),
         'concepto':     (args.get('concepto') or '').strip(),
-        'id_proyecto':  args.get('id_proyecto', type=int),
-        'id_entidad':   args.get('id_entidad', type=int),
+        'id_proyecto':  int(_pid) if _pid else None,
+        'id_entidad':   int(_eid) if _eid else None,
     }
 
 
@@ -465,14 +467,21 @@ def _contexto_financiero_texto(r):
 
 
 SYSTEM_IA_FINANZAS = (
-    "Eres un analista financiero senior de ServiControl, una empresa boliviana de "
-    "seguridad electrónica. Recibes datos financieros reales (ingresos, gastos, utilidad "
-    "por período, tipo de pago, concepto y proyecto) y la consulta de un usuario. "
-    "Respondé en español, de forma clara y profesional, basándote ÚNICAMENTE en los datos "
-    "proporcionados. Todos los montos están en bolivianos (Bs). Si la consulta pide algo que "
-    "los datos no permiten responder, indicálo con honestidad. Cuando sea útil, resaltá "
-    "tendencias, riesgos (p. ej. baja utilidad o gastos altos) y recomendaciones accionables. "
-    "Usá viñetas y secciones breves; no inventes cifras que no estén en los datos."
+    "Eres un analista financiero senior de ServiControl, empresa boliviana de seguridad electrónica. "
+    "Recibirás datos financieros reales y la consulta de un usuario. "
+    "DEBES responder ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin bloques de código. "
+    "El JSON debe tener exactamente esta estructura:\n"
+    '{"titulo":"string","introduccion":"string","secciones":[{"titulo":"string","columnas":["Col1","Col2"],"filas":[[val1,val2]]}],"conclusiones":["string"]}\n'
+    "Reglas:\n"
+    "- titulo: título corto del análisis basado en la consulta.\n"
+    "- introduccion: 1-2 oraciones de contexto.\n"
+    "- secciones: arreglo de tablas relevantes para la pregunta. Cada sección tiene titulo, columnas (strings) y filas (arrays de valores). "
+    "Incluí solo las secciones pertinentes a la consulta (evolución mensual, por tipo de pago, por proyecto, etc.).\n"
+    "- conclusiones: arreglo de 3-5 strings con hallazgos clave y recomendaciones accionables.\n"
+    "- Los montos son números (no strings). Todos los valores están en bolivianos (Bs).\n"
+    "- Basate ÚNICAMENTE en los datos provistos. No inventes cifras.\n"
+    "- Si algo no se puede responder con los datos, incluyelo en conclusiones.\n"
+    "- Respondé en español."
 )
 
 
@@ -512,18 +521,27 @@ def reporte_financiero_ia():
 
     try:
         import anthropic
+        import json as _json
         client = anthropic.Anthropic(api_key=api_key)
         respuesta = client.messages.create(
-            model=current_app.config.get('ANTHROPIC_MODEL', 'claude-opus-4-8'),
+            model=current_app.config.get('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
             max_tokens=4096,
             system=SYSTEM_IA_FINANZAS,
             messages=[{'role': 'user', 'content': prompt}],
         )
-        analisis = ''.join(
+        texto = ''.join(
             bloque.text for bloque in respuesta.content if getattr(bloque, 'type', None) == 'text'
         ).strip()
+        # Limpiar posibles bloques de código markdown
+        if texto.startswith('```'):
+            texto = texto.split('\n', 1)[1] if '\n' in texto else texto[3:]
+            texto = texto.rstrip('`').strip()
+        resultado_ia = _json.loads(texto)
     except ImportError:
         return jsonify({'error': 'El paquete anthropic no está instalado en el servidor.'}), 503
+    except _json.JSONDecodeError as exc:
+        current_app.logger.warning(f'Claude no devolvió JSON válido: {exc} | Texto: {texto[:300]}')
+        return jsonify({'error': 'No se pudo interpretar la respuesta de IA. Intentá nuevamente.'}), 502
     except Exception as exc:  # noqa: BLE001
         current_app.logger.warning(f'Error al generar el reporte por IA: {exc}')
         return jsonify({'error': 'No se pudo generar el análisis por IA. Intentá nuevamente.'}), 502
@@ -533,10 +551,82 @@ def reporte_financiero_ia():
 
     return jsonify({
         'consulta': consulta,
-        'analisis': analisis,
+        'reporte': resultado_ia,
         'periodo': reporte['periodo'],
         'resumen': reporte['resumen'],
     })
+
+
+@bp.post('/reporte/ia/exportar')
+@jwt_required()
+@requiere_permiso('ver_finanzas')
+def exportar_reporte_ia():
+    """Exporta en PDF o Excel el reporte estructurado generado por IA (ya procesado en el cliente)."""
+    from ...utils.reportes import exportar_secciones_pdf, exportar_secciones_xlsx
+    from ...utils.timezone import ahora_bolivia
+
+    data    = request.get_json() or {}
+    formato = (data.get('formato') or 'pdf').lower()
+    if formato not in ('pdf', 'xlsx'):
+        return jsonify({'error': 'Formato no soportado (use pdf o xlsx)'}), 400
+
+    reporte = data.get('reporte') or {}
+    resumen = data.get('resumen') or {}
+    periodo = data.get('periodo') or {}
+
+    if not reporte.get('secciones'):
+        return jsonify({'error': 'No hay datos para exportar.'}), 400
+
+    secciones = []
+
+    # Resumen numérico del período
+    if resumen:
+        secciones.append({
+            'titulo': 'Resumen del período',
+            'columnas': ['Métrica', 'Valor (Bs)'],
+            'filas': [
+                ['Total ingresos', resumen.get('total_ingresos', 0)],
+                ['Total gastos',   resumen.get('total_gastos',   0)],
+                ['Utilidad neta',  resumen.get('utilidad',       0)],
+                ['Pagos registrados',  resumen.get('cantidad_pagos',  0)],
+                ['Gastos registrados', resumen.get('cantidad_gastos', 0)],
+            ],
+        })
+
+    # Secciones generadas por Claude
+    for sec in reporte.get('secciones', []):
+        if sec.get('filas'):
+            secciones.append({
+                'titulo':   sec.get('titulo'),
+                'columnas': sec.get('columnas', []),
+                'filas':    sec.get('filas', []),
+            })
+
+    # Conclusiones como tabla numerada
+    conclusiones = reporte.get('conclusiones', [])
+    if conclusiones:
+        secciones.append({
+            'titulo':   'Conclusiones y recomendaciones',
+            'columnas': ['#', 'Conclusión'],
+            'filas':    [[i + 1, c] for i, c in enumerate(conclusiones)],
+        })
+
+    titulo = f"ServiControl — {reporte.get('titulo', 'Reporte financiero por IA')}"
+    subtitulos = []
+    fi, ff = periodo.get('fecha_inicio'), periodo.get('fecha_fin')
+    if fi or ff:
+        subtitulos.append(f"Período: {fi or '—'} al {ff or '—'}")
+    if reporte.get('introduccion'):
+        subtitulos.append(reporte['introduccion'])
+
+    log('EXPORTAR_REPORTE_IA', f"Reporte IA exportado en {formato.upper()}",
+        id_usuario=int(get_jwt_identity()), modulo='finanzas')
+
+    marca  = ahora_bolivia().strftime('%Y%m%d_%H%M')
+    nombre = f'reporte_ia_{marca}'
+    if formato == 'xlsx':
+        return exportar_secciones_xlsx(titulo, subtitulos, secciones, nombre)
+    return exportar_secciones_pdf(titulo, subtitulos, secciones, nombre, orientacion='L')
 
 
 # ── Reportes estáticos (consulta SQL fija, sin parámetros) ──────

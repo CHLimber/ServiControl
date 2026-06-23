@@ -53,7 +53,7 @@ class Config:
 
     # Claude (Anthropic) — usado por el reporte financiero por IA (CU43-IA)
     ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
-    ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-opus-4-8')
+    ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001')
 
 
 class DevelopmentConfig(Config):

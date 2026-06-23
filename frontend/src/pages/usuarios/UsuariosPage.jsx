@@ -5,6 +5,16 @@ import { Pencil, Lock, Unlock, KeyRound, X } from 'lucide-react'
 
 const FORM_VACIO = { username: '', password: '', email: '', id_rol: '', id_empleado: '' }
 
+function checkPassword(pwd) {
+  return {
+    longitud:  pwd.length >= 8,
+    mayuscula: /[A-Z]/.test(pwd),
+    minuscula: /[a-z]/.test(pwd),
+    numero:    /[0-9]/.test(pwd),
+    especial:  /[!@#$%^&*()\-_=+[\]{}|;:'",.<>?/\\`~]/.test(pwd),
+  }
+}
+
 function formatFecha(iso) {
   if (!iso) return 'Nunca'
   return new Date(iso).toLocaleString('es-BO', { dateStyle: 'short', timeStyle: 'short' })
@@ -68,6 +78,13 @@ export default function UsuariosPage() {
     if (!editando && !form.password) {
       setErrForm('La contraseña es obligatoria al crear un usuario.')
       return
+    }
+    if (form.password) {
+      const checks = checkPassword(form.password)
+      if (!Object.values(checks).every(Boolean)) {
+        setErrForm('La contraseña no cumple con todos los requisitos de seguridad.')
+        return
+      }
     }
     setGuardando(true)
     setErrForm('')
@@ -283,8 +300,31 @@ export default function UsuariosPage() {
                     </label>
                     <input type="password" className="input" value={form.password}
                       onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      placeholder={editando ? 'Nueva contraseña...' : 'Mínimo 6 caracteres'}
+                      placeholder={editando ? 'Nueva contraseña...' : 'Ej: MiClave#2024'}
                       autoComplete="new-password" maxLength={255} />
+                    {form.password && (() => {
+                      const c = checkPassword(form.password)
+                      const items = [
+                        { ok: c.longitud,  texto: 'Mínimo 8 caracteres' },
+                        { ok: c.mayuscula, texto: 'Una letra mayúscula' },
+                        { ok: c.minuscula, texto: 'Una letra minúscula' },
+                        { ok: c.numero,    texto: 'Un número' },
+                        { ok: c.especial,  texto: 'Un carácter especial (!@#$%...)' },
+                      ]
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+                          {items.map(({ ok, texto }) => (
+                            <span key={texto} style={{
+                              fontSize: 12,
+                              color: ok ? 'var(--success, #16a34a)' : 'var(--danger, #dc2626)',
+                              display: 'flex', alignItems: 'center', gap: 4,
+                            }}>
+                              {ok ? '✓' : '✗'} {texto}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
                 {errForm && <div className="alert alert-danger" style={{ marginTop: 12 }}>{errForm}</div>}

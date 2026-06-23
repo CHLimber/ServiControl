@@ -28,7 +28,8 @@ export const finanzasApi = {
     client.get('/finanzas/reporte/exportar', { params, responseType: 'blob' }),
 
   // Reporte por IA (Claude)
-  reporteIA: (data = {}) => client.post('/finanzas/reporte/ia', data),
+  reporteIA:         (data = {}) => client.post('/finanzas/reporte/ia', data),
+  exportarReporteIA: (data = {}) => client.post('/finanzas/reporte/ia/exportar', data, { responseType: 'blob' }),
 
   // Reportes estáticos (SQL fijo)
   listarReportesEstaticos: ()      => client.get('/finanzas/reporte/estaticos'),
