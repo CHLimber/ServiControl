@@ -18,4 +18,8 @@ export const proveedoresApi = {
   agregarProducto:    (id, data)        => client.post(`/proveedores/${id}/productos`, data),
   actualizarProducto: (id, idProd, data) => client.put(`/proveedores/${id}/productos/${idProd}`, data),
   quitarProducto:     (id, idProd)      => client.delete(`/proveedores/${id}/productos/${idProd}`),
+
+  // CU39 — Consulta de catálogo (solo lectura)
+  catalogoListar:    ()             => client.get('/proveedores/catalogo'),
+  catalogoProductos: (id, params = {}) => client.get(`/proveedores/catalogo/${id}/productos`, { params }),
 }

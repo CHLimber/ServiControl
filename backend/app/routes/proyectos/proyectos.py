@@ -11,6 +11,7 @@ from ...models.bitacoras.bitacora_doc import BitacoraProyecto, Documento
 from ...models.catalogo.catalogo import TipoDocumento
 from ...utils.bitacora import log
 from ...utils.permisos import requiere_permiso
+from ...utils import notificaciones
 
 bp = Blueprint('proyectos', __name__)
 
@@ -118,6 +119,7 @@ def actualizar(id_proyecto):
     if 'fecha_fin' in data:
         p.fecha_fin = data['fecha_fin'] or None
 
+    cambio_estado = False
     if 'id_estado_proyecto' in data and data['id_estado_proyecto'] != p.id_estado_proyecto:
         p.id_estado_proyecto = data['id_estado_proyecto']
         historial = ProyectoHistorial(
@@ -128,6 +130,7 @@ def actualizar(id_proyecto):
             observacion=data.get('observacion_cambio', ''),
         )
         db.session.add(historial)
+        cambio_estado = True
 
     db.session.commit()
 
@@ -138,6 +141,16 @@ def actualizar(id_proyecto):
     ]
     log('ACTUALIZAR_PROYECTO', f"Proyecto {id_proyecto} actualizado",
         id_usuario=id_usuario, modulo='proyectos', detalles=cambios or None)
+
+    if cambio_estado:
+        estado = db.session.get(EstadoProyecto, p.id_estado_proyecto)
+        nombre_estado = estado.nombre if estado else 'nuevo estado'
+        notificaciones.emitir_a_permiso(
+            'ver_proyectos', 'proyecto_actualizado',
+            'Proyecto actualizado',
+            f"El proyecto «{p.titulo}» cambió al estado «{nombre_estado}».",
+            url='/proyectos', excluir_usuario=id_usuario,
+        )
     return jsonify(_serializar(p, detalle=True))
 
 

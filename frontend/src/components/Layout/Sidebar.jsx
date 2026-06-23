@@ -6,7 +6,7 @@ import {
   Wallet, BookOpen, UserCog, Package, Bell, ClipboardList,
   List, MapPin, Settings, CalendarCheck, AlertTriangle,
   DollarSign, BarChart3, FolderOpen, ShieldCheck, Box, Tag,
-  Truck, Download, ChevronDown, LogOut,
+  Truck, Download, ChevronDown, LogOut, Search, SlidersHorizontal,
 } from 'lucide-react'
 
 // Cada item puede declarar `permisos: [...]` (OR-lógico).
@@ -48,6 +48,7 @@ const MENU = [
           { to: '/mantenimiento/alertas', icon: <AlertTriangle size={13} />,  label: 'Alertas pendientes', permisos: ['ver_mantenimientos'] },
         ],
       },
+      { to: '/catalogo/consultar-proveedores', icon: <Truck size={16} />, label: 'Catálogo proveedores', permisos: ['consultar_proveedores', 'gestionar_catalogo'] },
     ],
   },
   {
@@ -109,15 +110,23 @@ const MENU = [
   {
     section: 'SISTEMA',
     items: [
-      { to: '/notificaciones', icon: <Bell size={16} />, label: 'Notificaciones' },
+      {
+        id: 'notificaciones', icon: <Bell size={16} />, label: 'Notificaciones',
+        paths: ['/notificaciones'],
+        children: [
+          { to: '/notificaciones',              icon: <List size={13} />,             label: 'Centro' },
+          { to: '/notificaciones/preferencias', icon: <SlidersHorizontal size={13} />, label: 'Preferencias' },
+        ],
+      },
       {
         id: 'auditoria', icon: <ClipboardList size={16} />, label: 'Auditoría',
         paths: ['/auditoria'],
         permisos: ['gestionar_usuarios'],
         children: [
-          { to: '/auditoria',          icon: <List size={13} />,      label: 'Log del sistema',      permisos: ['gestionar_usuarios'] },
-          { to: '/auditoria/exportar', icon: <Download size={13} />,  label: 'Exportar log',         permisos: ['gestionar_usuarios'] },
-          { to: '/auditoria/reporte',  icon: <BarChart3 size={13} />, label: 'Reporte de actividad', permisos: ['gestionar_usuarios'] },
+          { to: '/auditoria',             icon: <List size={13} />,      label: 'Log del sistema',      permisos: ['gestionar_usuarios'] },
+          { to: '/auditoria/por-usuario', icon: <Search size={13} />,    label: 'Por usuario',          permisos: ['gestionar_usuarios'] },
+          { to: '/auditoria/exportar',    icon: <Download size={13} />,  label: 'Exportar log',         permisos: ['gestionar_usuarios'] },
+          { to: '/auditoria/reporte',     icon: <BarChart3 size={13} />, label: 'Reporte de actividad', permisos: ['ver_reportes'] },
         ],
       },
     ],

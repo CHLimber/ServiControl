@@ -118,7 +118,7 @@ def actualizar(id_usuario):
     log('ACTUALIZAR_USUARIO', f"Usuario '{u.username}' actualizado — campos: {detalle_cambios}",
         id_usuario=int(id_solicitante), modulo='usuarios')
     if cambio_password:
-        correo.notificar_cambio_password(u.email, u.username)
+        correo.notificar_cambio_password(u.email, u.username, id_usuario=u.id)
     return jsonify(_serializar(u))
 
 
@@ -150,7 +150,7 @@ def desbloquear(id_usuario):
     u.veces_bloqueado = 0
     db.session.commit()
     log('DESBLOQUEAR_USUARIO', f"Usuario '{u.username}' desbloqueado manualmente", id_usuario=int(id_solicitante), modulo='usuarios')
-    correo.notificar_cuenta_desbloqueada(u.email, u.username)
+    correo.notificar_cuenta_desbloqueada(u.email, u.username, id_usuario=u.id)
     return jsonify(_serializar(u))
 
 

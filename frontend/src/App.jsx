@@ -1,9 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout/Layout'
-import {
-  BarChart3, Download,
-} from 'lucide-react'
 
 import LoginPage           from './pages/auth/LoginPage'
 import DashboardPage       from './pages/dashboard/DashboardPage'
@@ -27,10 +24,14 @@ import CatalogoPage        from './pages/catalogo/CatalogoPage'
 import CategoriasPage      from './pages/categorias/CategoriasPage'
 import ServiciosPage       from './pages/servicios/ServiciosPage'
 import ProveedoresPage     from './pages/proveedores/ProveedoresPage'
+import CatalogoProveedoresPage from './pages/catalogo/CatalogoProveedoresPage'
 import NotificacionesPage  from './pages/notificaciones/NotificacionesPage'
+import PreferenciasPage    from './pages/notificaciones/PreferenciasPage'
+import ExportarLogPage     from './pages/auditoria/ExportarLogPage'
+import AuditoriaUsuarioPage from './pages/auditoria/AuditoriaUsuarioPage'
+import ReporteActividadPage from './pages/auditoria/ReporteActividadPage'
 import EmpleadosPage       from './pages/empleados/EmpleadosPage'
 import PerfilPage          from './pages/perfil/PerfilPage'
-import ModuloPlaceholder   from './pages/ModuloPlaceholder'
 
 function RutaProtegida({ children, permisos, crearPermiso }) {
   const { token, puedeAlguno } = useAuth()
@@ -54,14 +55,6 @@ function SinAcceso() {
       <h2 style={{ marginBottom: 8 }}>Sin acceso</h2>
       <p>Tu rol no tiene permiso para ver esta sección.</p>
     </div>
-  )
-}
-
-function P(nombre, descripcion, icon) {
-  return (
-    <RutaProtegida>
-      <ModuloPlaceholder nombre={nombre} descripcion={descripcion} icon={icon} />
-    </RutaProtegida>
   )
 }
 
@@ -117,11 +110,16 @@ export default function App() {
       <Route path="/catalogo/proveedores" element={<RutaProtegida permisos={['gestionar_catalogo']}><ProveedoresPage /></RutaProtegida>} />
       <Route path="/catalogo/servicios"   element={<RutaProtegida permisos={['gestionar_catalogo']}><ServiciosPage /></RutaProtegida>} />
 
+      {/* Catálogo de proveedores — consulta (CU39) */}
+      <Route path="/catalogo/consultar-proveedores" element={<RutaProtegida permisos={['consultar_proveedores', 'gestionar_catalogo']}><CatalogoProveedoresPage /></RutaProtegida>} />
+
       {/* Sistema */}
-      <Route path="/notificaciones"     element={<RutaProtegida><NotificacionesPage /></RutaProtegida>} />
+      <Route path="/notificaciones"             element={<RutaProtegida><NotificacionesPage /></RutaProtegida>} />
+      <Route path="/notificaciones/preferencias" element={<RutaProtegida><PreferenciasPage /></RutaProtegida>} />
       <Route path="/auditoria"          element={<RutaProtegida permisos={['gestionar_usuarios']}><AuditoriaPage /></RutaProtegida>} />
-      <Route path="/auditoria/exportar" element={P('Exportar log', 'Descarga del historial de auditoría en CSV o PDF', <Download size={32} />)} />
-      <Route path="/auditoria/reporte"  element={P('Reporte de actividad', 'Resumen estadístico de acciones por módulo y período', <BarChart3 size={32} />)} />
+      <Route path="/auditoria/por-usuario" element={<RutaProtegida permisos={['gestionar_usuarios']}><AuditoriaUsuarioPage /></RutaProtegida>} />
+      <Route path="/auditoria/exportar" element={<RutaProtegida permisos={['gestionar_usuarios']}><ExportarLogPage /></RutaProtegida>} />
+      <Route path="/auditoria/reporte"  element={<RutaProtegida permisos={['ver_reportes']}><ReporteActividadPage /></RutaProtegida>} />
 
       {/* Perfil — siempre accesible */}
       <Route path="/perfil" element={<RutaProtegida><PerfilPage /></RutaProtegida>} />
