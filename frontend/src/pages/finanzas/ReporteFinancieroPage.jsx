@@ -281,7 +281,7 @@ function ReporteIA() {
   const recognitionRef = useRef(null)
 
   const vozSoportada = typeof window !== 'undefined' &&
-    (window.SpeechRecognition || window.webkitSpeechRecognition)
+    !!(window.SpeechRecognition || window.webkitSpeechRecognition)
 
   useEffect(() => () => { recognitionRef.current?.stop() }, [])
 
@@ -290,18 +290,37 @@ function ReporteIA() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) return
     const rec = new SpeechRecognition()
-    rec.lang = 'es-BO'
+    rec.lang = 'es-ES'
     rec.interimResults = false
     rec.continuous = false
     rec.onresult = e => {
       const texto = Array.from(e.results).map(r => r[0].transcript).join(' ').trim()
       setConsulta(prev => (prev ? prev.trim() + ' ' : '') + texto)
+      setError('')
     }
-    rec.onerror = () => setEscuchando(false)
-    rec.onend   = () => setEscuchando(false)
+    rec.onerror = e => {
+      setEscuchando(false)
+      const MENSAJES = {
+        'not-allowed':       'Permiso de micrófono denegado. Habilitalo en la configuración del navegador.',
+        'permission-denied': 'Permiso de micrófono denegado. Habilitalo en la configuración del navegador.',
+        'network':           'No se pudo conectar al servicio de voz. Verificá tu conexión a internet.',
+        'service-not-allowed': 'El servicio de voz no está disponible en este navegador o dispositivo.',
+        'audio-capture':     'No se detectó micrófono. Verificá que el dispositivo tenga uno activo.',
+        'no-speech':         'No se detectó voz. Intentá hablar más cerca del micrófono.',
+        'aborted':           '',
+      }
+      const msg = MENSAJES[e.error]
+      if (msg) setError(msg)
+    }
+    rec.onend = () => setEscuchando(false)
     recognitionRef.current = rec
     setEscuchando(true)
-    rec.start()
+    try {
+      rec.start()
+    } catch {
+      setEscuchando(false)
+      setError('No se pudo iniciar el micrófono. Recargá la página e intentá de nuevo.')
+    }
   }
 
   async function generar(textoConsulta) {
@@ -369,7 +388,14 @@ function ReporteIA() {
 
         {escuchando && (
           <div className="text-sm" style={{ color: 'var(--danger)', marginTop: 6 }}>
-            Escuchando… hablá ahora.
+            Escuchando… hablá ahora y detené cuando termines.
+          </div>
+        )}
+
+        {!vozSoportada && (
+          <div className="text-sm" style={{ color: 'var(--text-muted)', marginTop: 6 }}>
+            El dictado por voz no está disponible en este navegador.
+            En móvil funciona solo en <strong>Chrome para Android</strong>.
           </div>
         )}
 
