@@ -40,3 +40,8 @@ desktop.ini
 
 # ── Migraciones compiladas ───────────────────────────
 migrations/__pycache__/
+
+# ── Claude Code (local) ──────────────────────────
+.claude/
+.agents/
+skills-lock.json
