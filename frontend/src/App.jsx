@@ -32,6 +32,12 @@ import AuditoriaUsuarioPage from './pages/auditoria/AuditoriaUsuarioPage'
 import ReporteActividadPage from './pages/auditoria/ReporteActividadPage'
 import EmpleadosPage       from './pages/empleados/EmpleadosPage'
 import PerfilPage          from './pages/perfil/PerfilPage'
+import AsistentePage       from './pages/asistente/AsistentePage'
+
+const PERMISOS_CHATBOT = [
+  'ver_finanzas', 'ver_proyectos', 'ver_ordenes', 'ver_cotizaciones',
+  'ver_clientes', 'ver_mantenimientos', 'gestionar_catalogo', 'consultar_proveedores',
+]
 
 function RutaProtegida({ children, permisos, crearPermiso }) {
   const { token, puedeAlguno } = useAuth()
@@ -65,6 +71,9 @@ export default function App() {
 
       {/* Principal — visible para todos los autenticados */}
       <Route path="/" element={<RutaProtegida><DashboardPage /></RutaProtegida>} />
+
+      {/* Asistente IA — su propia ventana */}
+      <Route path="/asistente" element={<RutaProtegida permisos={PERMISOS_CHATBOT}><AsistentePage /></RutaProtegida>} />
 
       {/* Comercial — Clientes */}
       <Route path="/clientes"                  element={<RutaProtegida permisos={['ver_clientes']}><EntidadesPage /></RutaProtegida>} />

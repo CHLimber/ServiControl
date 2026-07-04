@@ -7,7 +7,14 @@ import {
   List, MapPin, Settings, CalendarCheck, AlertTriangle,
   DollarSign, BarChart3, FolderOpen, ShieldCheck, Box, Tag,
   Truck, Download, ChevronDown, LogOut, Search, SlidersHorizontal,
+  Bot,
 } from 'lucide-react'
+
+// Módulos que habilitan el asistente (basta tener uno). Debe coincidir con el backend.
+const PERMISOS_CHATBOT = [
+  'ver_finanzas', 'ver_proyectos', 'ver_ordenes', 'ver_cotizaciones',
+  'ver_clientes', 'ver_mantenimientos', 'gestionar_catalogo', 'consultar_proveedores',
+]
 
 // Cada item puede declarar `permisos: [...]` (OR-lógico).
 // Si no declara permisos, se muestra siempre (ej: Dashboard, Perfil, Notificaciones).
@@ -16,6 +23,7 @@ const MENU = [
     section: null,
     items: [
       { to: '/', icon: <LayoutDashboard size={16} />, label: 'Dashboard', exact: true },
+      { to: '/asistente', icon: <Bot size={16} />, label: 'Asistente IA', permisos: PERMISOS_CHATBOT },
     ],
   },
   {

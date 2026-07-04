@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import client from '../../api/client'
-import { AlertTriangle, X, Check } from 'lucide-react'
+import { AlertTriangle, X, Check, Bot } from 'lucide-react'
 
 const rolesApi = {
   listar:            ()         => client.get('/roles/'),
@@ -16,6 +16,18 @@ const COLS = [
   { key: 'editar',    label: 'Modificar' },
   { key: 'gestionar', label: 'Gestionar' },
 ]
+
+// Módulos que el Asistente IA (chatbot) puede consultar y el permiso (prefijo)
+// que habilita esa consulta. Es solo informativo: reutiliza el permiso existente.
+const IA_MODULOS = {
+  proyectos:      'ver',
+  ordenes:        'ver',
+  clientes:       'ver',
+  cotizaciones:   'ver',
+  finanzas:       'ver',
+  mantenimientos: 'ver',
+  catalogo:       'gestionar',
+}
 
 // Orden y etiquetas de los módulos
 const ORDEN_MODULOS = [
@@ -247,8 +259,9 @@ export default function RolesPage() {
               <div className="table-wrap" style={{ marginBottom: 20 }}>
                 <table style={{ tableLayout: 'fixed' }}>
                   <colgroup>
-                    <col style={{ width: '40%' }} />
+                    <col style={{ width: '34%' }} />
                     {COLS.map(c => <col key={c.key} />)}
+                    <col style={{ width: '120px' }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -279,6 +292,14 @@ export default function RolesPage() {
                           </th>
                         )
                       })}
+                      <th style={{ textAlign: 'center', userSelect: 'none' }}
+                          title="Módulos que el chatbot puede consultar según el permiso de Leer (Gestionar en Catálogo)">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <Bot size={14} /> Asistente IA
+                          </span>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -338,11 +359,50 @@ export default function RolesPage() {
                               </td>
                             )
                           })}
+                          {(() => {
+                            const iaPref = IA_MODULOS[mod]
+                            const permHab = iaPref && matrix[mod]?.[iaPref]
+                            if (!permHab) {
+                              return (
+                                <td style={{ textAlign: 'center' }}>
+                                  <span style={{ color: 'var(--border)', fontSize: '1.1rem', lineHeight: 1 }}>—</span>
+                                </td>
+                              )
+                            }
+                            const puede = pendientes.has(permHab.id)
+                            return (
+                              <td style={{ textAlign: 'center' }}>
+                                <span
+                                  title={puede
+                                    ? `El asistente puede consultar ${label} (requiere "${permHab.nombre}")`
+                                    : `Marcá "${permHab.nombre}" para que el asistente pueda consultar ${label}`}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '2px 9px', borderRadius: 11, fontSize: '0.72rem', fontWeight: 600,
+                                    color: puede ? 'var(--success)' : 'var(--text-muted)',
+                                    background: puede ? 'var(--success-light)' : 'transparent',
+                                    border: `1px solid ${puede ? 'var(--success)' : 'var(--border)'}`,
+                                  }}
+                                >
+                                  <Bot size={12} /> {puede ? 'Puede' : 'No'}
+                                </span>
+                              </td>
+                            )
+                          })()}
                         </tr>
                       )
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+                <Bot size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <span>
+                  La columna <strong>Asistente IA</strong> es informativa: indica qué módulos podrá consultar el
+                  chatbot con este rol. Se habilita con el permiso de <strong>Leer</strong> (o <strong>Gestionar</strong> en
+                  Catálogo); no es un permiso aparte.
+                </span>
               </div>
 
               {/* Permisos que no encajan en la tabla (prefijo desconocido) */}
