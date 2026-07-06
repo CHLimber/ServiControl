@@ -118,6 +118,16 @@ def aplicar_migraciones_permisos():
         ('gestionar_empleados', 'Crear, editar y desactivar empleados',           []),
         ('consultar_proveedores', 'Consultar el catálogo de proveedores y precios',
             ['Técnico Superior']),
+        # Asistente IA (CU50/CU51) — permisos por módulo. El Administrador los recibe
+        # automáticamente; el resto de roles se asignan desde Gestión de Roles.
+        ('asistente_proyectos',      'Permite al asistente IA consultar el módulo de Proyectos',            []),
+        ('asistente_ordenes',        'Permite al asistente IA consultar el módulo de Órdenes de trabajo',   []),
+        ('asistente_clientes',       'Permite al asistente IA consultar el módulo de Clientes',             []),
+        ('asistente_cotizaciones',   'Permite al asistente IA consultar el módulo de Cotizaciones',         []),
+        ('asistente_finanzas',       'Permite al asistente IA consultar el módulo de Finanzas',             []),
+        ('asistente_mantenimientos', 'Permite al asistente IA consultar el módulo de Mantenimiento',        []),
+        ('asistente_empleados',      'Permite al asistente IA consultar el módulo de Empleados',            []),
+        ('asistente_catalogo',       'Permite al asistente IA consultar el módulo de Catálogo',             []),
     ]
     conn = get_conn()
     cursor = conn.cursor()

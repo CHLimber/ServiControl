@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bot, Trash2, Send, Mic, MicOff } from 'lucide-react'
-import { chatbotApi } from '../../api/chatbot'
-import { renderMarkdown } from '../../components/Chatbot/markdown'
+import { asistenteApi } from '../../api/asistente'
+import { renderMarkdown } from '../../components/Asistente/markdown'
 
 const SALUDO = {
   role: 'assistant',
@@ -24,7 +24,7 @@ export default function AsistentePage() {
     !!(window.SpeechRecognition || window.webkitSpeechRecognition)
 
   useEffect(() => {
-    chatbotApi.modulos()
+    asistenteApi.modulos()
       .then(({ modulos }) => setModulos(modulos || []))
       .catch(() => setModulos([]))
   }, [])
@@ -95,7 +95,7 @@ export default function AsistentePage() {
       .map(m => ({ role: m.role, content: m.content }))
 
     try {
-      const res = await chatbotApi.consultar({ pregunta, historial })
+      const res = await asistenteApi.consultar({ pregunta, historial })
       const respuesta = res.error || res.respuesta
       setMensajes(m => [...m, { role: 'assistant', content: respuesta }])
     } catch (err) {

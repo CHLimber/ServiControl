@@ -11,9 +11,9 @@ import {
 } from 'lucide-react'
 
 // Módulos que habilitan el asistente (basta tener uno). Debe coincidir con el backend.
-const PERMISOS_CHATBOT = [
-  'ver_finanzas', 'ver_proyectos', 'ver_ordenes', 'ver_cotizaciones',
-  'ver_clientes', 'ver_mantenimientos', 'gestionar_catalogo', 'consultar_proveedores',
+const PERMISOS_ASISTENTE = [
+  'asistente_proyectos', 'asistente_ordenes', 'asistente_clientes', 'asistente_cotizaciones',
+  'asistente_finanzas', 'asistente_mantenimientos', 'asistente_empleados', 'asistente_catalogo',
 ]
 
 // Cada item puede declarar `permisos: [...]` (OR-lógico).
@@ -23,7 +23,7 @@ const MENU = [
     section: null,
     items: [
       { to: '/', icon: <LayoutDashboard size={16} />, label: 'Dashboard', exact: true },
-      { to: '/asistente', icon: <Bot size={16} />, label: 'Asistente IA', permisos: PERMISOS_CHATBOT },
+      { to: '/asistente', icon: <Bot size={16} />, label: 'Asistente IA', permisos: PERMISOS_ASISTENTE },
     ],
   },
   {

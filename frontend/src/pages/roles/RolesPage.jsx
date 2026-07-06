@@ -17,18 +17,6 @@ const COLS = [
   { key: 'gestionar', label: 'Gestionar' },
 ]
 
-// Módulos que el Asistente IA (chatbot) puede consultar y el permiso (prefijo)
-// que habilita esa consulta. Es solo informativo: reutiliza el permiso existente.
-const IA_MODULOS = {
-  proyectos:      'ver',
-  ordenes:        'ver',
-  clientes:       'ver',
-  cotizaciones:   'ver',
-  finanzas:       'ver',
-  mantenimientos: 'ver',
-  catalogo:       'gestionar',
-}
-
 // Orden y etiquetas de los módulos
 const ORDEN_MODULOS = [
   ['proyectos',      'Proyectos'],
@@ -45,13 +33,19 @@ const ORDEN_MODULOS = [
 ]
 
 // Agrupa el catálogo en { modulo: { prefijo: permiso } }
-// Permisos sin prefijo conocido van a sinGrupo
+// Los permisos asistente_* van a asistente_matrix; el resto sin prefijo conocido a sinGrupo
 function buildMatrix(catalogo) {
   const matrix = {}
   const sinGrupo = []
+  const asistente_matrix = {}
   const prefijosValidos = new Set(COLS.map(c => c.key))
 
   for (const p of catalogo) {
+    if (p.nombre.startsWith('asistente_')) {
+      const mod = p.nombre.slice('asistente_'.length)
+      asistente_matrix[mod] = p
+      continue
+    }
     const idx = p.nombre.indexOf('_')
     if (idx === -1) { sinGrupo.push(p); continue }
     const pref = p.nombre.slice(0, idx)
@@ -60,7 +54,7 @@ function buildMatrix(catalogo) {
     if (!matrix[mod]) matrix[mod] = {}
     matrix[mod][pref] = p
   }
-  return { matrix, sinGrupo }
+  return { matrix, sinGrupo, asistente_matrix }
 }
 
 // Capitaliza primera letra
@@ -132,6 +126,16 @@ export default function RolesPage() {
     })
   }
 
+  function toggleColumnaIA(asistente_matrix) {
+    const perms = Object.values(asistente_matrix)
+    const todos = perms.every(p => pendientes.has(p.id))
+    setPendientes(prev => {
+      const next = new Set(prev)
+      perms.forEach(p => todos ? next.delete(p.id) : next.add(p.id))
+      return next
+    })
+  }
+
   // Marca/desmarca toda una columna (acción)
   function toggleColumna(prefijo, matrix) {
     const permsDeLaCol = ORDEN_MODULOS
@@ -182,7 +186,7 @@ export default function RolesPage() {
 
   if (cargando) return <div className="empty-state">Cargando roles y permisos...</div>
 
-  const { matrix, sinGrupo } = buildMatrix(catalogo)
+  const { matrix, sinGrupo, asistente_matrix } = buildMatrix(catalogo)
 
   // Módulos en orden fijo + cualquier módulo extra del catálogo no cubierto
   const modulosEnOrden = new Set(ORDEN_MODULOS.map(([mod]) => mod))
@@ -292,12 +296,28 @@ export default function RolesPage() {
                           </th>
                         )
                       })}
-                      <th style={{ textAlign: 'center', userSelect: 'none' }}
-                          title="Módulos que el chatbot puede consultar según el permiso de Leer (Gestionar en Catálogo)">
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <th style={{ textAlign: 'center', userSelect: 'none' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <Bot size={14} /> Asistente IA
                           </span>
+                          {Object.keys(asistente_matrix).length > 0 && (() => {
+                            const permsIA = Object.values(asistente_matrix)
+                            const todosIA = permsIA.every(p => pendientes.has(p.id))
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => toggleColumnaIA(asistente_matrix)}
+                                style={{
+                                  fontSize: '0.68rem', padding: '1px 7px', borderRadius: 10,
+                                  border: '1px solid var(--border)', background: 'transparent',
+                                  color: 'var(--text-muted)', cursor: 'pointer',
+                                }}
+                              >
+                                {todosIA ? 'Quitar todo' : 'Marcar todo'}
+                              </button>
+                            )
+                          })()}
                         </div>
                       </th>
                     </tr>
@@ -360,32 +380,34 @@ export default function RolesPage() {
                             )
                           })}
                           {(() => {
-                            const iaPref = IA_MODULOS[mod]
-                            const permHab = iaPref && matrix[mod]?.[iaPref]
-                            if (!permHab) {
+                            const perm = asistente_matrix[mod]
+                            if (!perm) {
                               return (
                                 <td style={{ textAlign: 'center' }}>
                                   <span style={{ color: 'var(--border)', fontSize: '1.1rem', lineHeight: 1 }}>—</span>
                                 </td>
                               )
                             }
-                            const puede = pendientes.has(permHab.id)
+                            const activo = pendientes.has(perm.id)
                             return (
                               <td style={{ textAlign: 'center' }}>
-                                <span
-                                  title={puede
-                                    ? `El asistente puede consultar ${label} (requiere "${permHab.nombre}")`
-                                    : `Marcá "${permHab.nombre}" para que el asistente pueda consultar ${label}`}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                    padding: '2px 9px', borderRadius: 11, fontSize: '0.72rem', fontWeight: 600,
-                                    color: puede ? 'var(--success)' : 'var(--text-muted)',
-                                    background: puede ? 'var(--success-light)' : 'transparent',
-                                    border: `1px solid ${puede ? 'var(--success)' : 'var(--border)'}`,
-                                  }}
+                                <label
+                                  title={perm.descripcion}
+                                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                                 >
-                                  <Bot size={12} /> {puede ? 'Puede' : 'No'}
-                                </span>
+                                  <div
+                                    onClick={() => togglePermiso(perm.id)}
+                                    style={{
+                                      width: 20, height: 20, borderRadius: 5,
+                                      border: `2px solid ${activo ? 'var(--accent)' : 'var(--text-muted)'}`,
+                                      background: activo ? 'var(--accent)' : 'transparent',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      cursor: 'pointer', transition: 'border-color .15s, background .15s',
+                                    }}
+                                  >
+                                    {activo && <Check size={12} color="white" strokeWidth={3} />}
+                                  </div>
+                                </label>
                               </td>
                             )
                           })()}
@@ -394,15 +416,6 @@ export default function RolesPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
-
-              <div className="text-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-                <Bot size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                <span>
-                  La columna <strong>Asistente IA</strong> es informativa: indica qué módulos podrá consultar el
-                  chatbot con este rol. Se habilita con el permiso de <strong>Leer</strong> (o <strong>Gestionar</strong> en
-                  Catálogo); no es un permiso aparte.
-                </span>
               </div>
 
               {/* Permisos que no encajan en la tabla (prefijo desconocido) */}

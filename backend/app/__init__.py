@@ -42,7 +42,7 @@ def create_app(env: str = None):
     from .routes.auditoria.auditoria  import bp as auditoria_bp
     from .routes.empleados.empleados  import bp as empleados_bp
     from .routes.dashboard.dashboard  import bp as dashboard_bp
-    from .routes.chatbot.chatbot      import bp as chatbot_bp
+    from .routes.asistente.asistente  import bp as asistente_bp
 
     app.register_blueprint(auth_bp,          url_prefix='/api/auth')
     app.register_blueprint(usuarios_bp,      url_prefix='/api/usuarios')
@@ -64,6 +64,6 @@ def create_app(env: str = None):
     app.register_blueprint(auditoria_bp,     url_prefix='/api/auditoria')
     app.register_blueprint(empleados_bp,     url_prefix='/api/empleados')
     app.register_blueprint(dashboard_bp,     url_prefix='/api/dashboard')
-    app.register_blueprint(chatbot_bp,       url_prefix='/api/chatbot')
+    app.register_blueprint(asistente_bp,     url_prefix='/api/asistente')
 
     return app
